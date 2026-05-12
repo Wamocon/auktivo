@@ -1,0 +1,47 @@
+# =============================================================================
+# Caller Workflow - PR Pipeline (Auto-Fix + Checks)
+# =============================================================================
+# Source: Wamocon/github_workflow/examples/caller-pr-pipeline.yml
+#
+# Trigger : Automatically on every PR targeting main/master.
+#           Also triggerable manually from the Actions tab.
+#           This is the ONLY workflow that runs automatically.
+#
+# What it does:
+#   1. Auto-Fix  - ESLint --fix + Prettier, commits fixes back to the PR branch.
+#   2. PR Checks - TypeScript typecheck + ESLint lint.
+#                  Blocks the PR merge if checks fail.
+#
+# SETUP - one thing to do:
+#   Settings → Actions → General → Workflow permissions
+#     Enable "Allow GitHub Actions to create and approve pull requests"
+#     (required for the auto-fix commit-back to work)
+# =============================================================================
+
+name: PR Pipeline
+
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+# Cancel redundant runs on the same PR when a new commit is pushed.
+# Falls back to github.ref for manual (workflow_dispatch) runs.
+concurrency:
+  group: pr-pipeline-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- Step 1: Auto-fix lint & format errors --------------------------------
+  autofix:
+    name: Auto-Fix
+    uses: Wamocon/github_workflow/.github/workflows/pr-autofix.yml@main
+    permissions:
+      contents: write
+
+  # --- Step 2: Validate code (typecheck + lint) -----------------------------
+  validate:
+    name: PR Checks
+    needs: autofix
+    uses: Wamocon/github_workflow/.github/workflows/pr-checks.yml@main

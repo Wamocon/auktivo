@@ -1,0 +1,22 @@
+<svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Entwickelt in Deutschland Sign</title>
+  <desc id="desc">Round seal with star and German flag stripes.</desc>
+  <circle cx="110" cy="110" r="96" stroke="#1A1A1A" stroke-width="4"/>
+  <circle cx="110" cy="110" r="86" stroke="#1A1A1A" stroke-width="2"/>
+
+  <polygon points="110,40 116,58 134,58 120,68 125,86 110,76 95,86 100,68 86,58 104,58" fill="#1A1A1A"/>
+
+  <path id="sealTopText" d="M 40,110 A 70,70 0 0,1 180,110" fill="none"/>
+  <text font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="2" fill="#1A1A1A">
+    <textPath href="#sealTopText" startOffset="50%" text-anchor="middle">ENTWICKELT IN</textPath>
+  </text>
+
+  <path id="sealBottomText" d="M 38,118 A 72,72 0 0,0 182,118" fill="none"/>
+  <text font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="2" fill="#1A1A1A">
+    <textPath href="#sealBottomText" startOffset="50%" text-anchor="middle">DEUTSCHLAND</textPath>
+  </text>
+
+  <rect x="80" y="92" width="60" height="8" rx="1" fill="#000000"/>
+  <rect x="80" y="100" width="60" height="8" fill="#DD0000"/>
+  <rect x="80" y="108" width="60" height="8" rx="1" fill="#FFCC00"/>
+</svg>

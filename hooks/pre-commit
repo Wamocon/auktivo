@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Pre-commit Hook - Secret Scanner
+# =============================================================================
+# Blocks any commit that contains hard-coded secrets, API keys, tokens, or
+# credentials before they ever leave your machine.
+#
+# INSTALL (run once per repo after cloning):
+#   bash hooks/install.sh
+#
+# BYPASS (emergency only - never for secret-containing commits):
+#   git commit --no-verify -m "your message"
+#
+# ADD EXCEPTIONS:
+#   Add a comment  # notsecret  on the same line in your source file, OR
+#   add the filename to the ALLOWED_FILES list near the top of this script.
+# =============================================================================
+
+set -euo pipefail
+
+# ─── Configuration ────────────────────────────────────────────────────────────
+
+# Files that are always safe to commit even if they match patterns below.
+ALLOWED_FILES=(
+  "hooks/pre-commit"
+  ".github/workflows/deploy.yml"
+  ".github/workflows/pr-pipeline.yml"
+  "docs/workflow-guide.md"
+  "HOWTO.md"
+)
+
+# ─── Colours ──────────────────────────────────────────────────────────────────
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+found=0
+
+flag_match() {
+  local file="$1" line_no="$2" line="$3" reason="$4"
+
+  # Skip lines with the inline exception marker
+  echo "$line" | grep -q 'notsecret' && return 0
+
+  if [[ "$found" -eq 0 ]]; then
+    echo ""
+    echo -e "${RED}${BOLD}[pre-commit] BLOCKED - potential secrets detected${RESET}"
+    echo -e "${YELLOW}─────────────────────────────────────────────────────────────${RESET}"
+  fi
+  echo -e "  ${RED}✖${RESET} ${BOLD}${file}${RESET}:${line_no}"
+  echo -e "    Reason : ${YELLOW}${reason}${RESET}"
+  echo -e "    Content: ${line:0:120}"
+  echo ""
+  found=1
+}
+
+is_allowed() {
+  local file="$1"
+  for allowed in "${ALLOWED_FILES[@]}"; do
+    [[ "$file" == "$allowed" ]] && return 0
+  done
+  return 1
+}
+
+# ─── Get staged files ─────────────────────────────────────────────────────────
+staged_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)
+
+if [[ -z "$staged_files" ]]; then
+  exit 0
+fi
+
+# ─── Block .env files ────────────────────────────────────────────────────────
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  is_allowed "$file" && continue
+
+  basename=$(basename "$file")
+  if [[ "$basename" == ".env" || "$basename" == ".env.local" || \
+        "$basename" == ".env.production" || "$basename" == ".env.development" ]]; then
+    if [[ "$found" -eq 0 ]]; then
+      echo ""
+      echo -e "${RED}${BOLD}[pre-commit] BLOCKED - .env file staged for commit${RESET}"
+      echo -e "${YELLOW}─────────────────────────────────────────────────────────────${RESET}"
+    fi
+    echo -e "  ${RED}✖${RESET} ${BOLD}${file}${RESET}"
+    echo -e "    Reason : ${YELLOW}.env files must never be committed. Add it to .gitignore.${RESET}"
+    echo ""
+    found=1
+  fi
+done <<< "$staged_files"
+
+# ─── Scan file content for secret patterns ───────────────────────────────────
+while IFS= read -r file; do
+  [[ -z "$file" ]] && continue
+  is_allowed "$file" && continue
+
+  # Skip binary files using git metadata only (more reliable on Windows)
+  if git diff --cached --numstat -- "$file" | grep -qE '^-\s+-\s+'; then
+    continue
+  fi
+
+  line_no=0
+  tmp_content_file=$(mktemp)
+  git show ":$file" > "$tmp_content_file" 2>/dev/null || true
+  while IFS= read -r line; do
+    line_no=$((line_no + 1))
+    trimmed="${line#"${line%%[! ]*}"}"
+    [[ "$trimmed" =~ ^#  ]] && continue
+    [[ "$trimmed" =~ ^// ]] && continue
+    [[ "$trimmed" =~ ^\* ]] && continue
+
+    # ── AWS ────────────────────────────────────────────────────────────────
+    echo "$line" | grep -qE 'AKIA[0-9A-Z]{16}' \
+      && flag_match "$file" "$line_no" "$line" "AWS Access Key ID (AKIA...)"
+
+    echo "$line" | grep -qiE '(aws_secret_access_key|aws_secret)\s*[=:]\s*["\x27]?[A-Za-z0-9/+=]{40}' \
+      && flag_match "$file" "$line_no" "$line" "AWS Secret Access Key"
+
+    # ── GitHub tokens ──────────────────────────────────────────────────────
+    echo "$line" | grep -qE 'gh[psoura]_[A-Za-z0-9]{36,}' \
+      && flag_match "$file" "$line_no" "$line" "GitHub Personal/Service Access Token"
+
+    echo "$line" | grep -qE 'github_pat_[A-Za-z0-9_]{20,}' \
+      && flag_match "$file" "$line_no" "$line" "GitHub Fine-grained PAT"
+
+    # ── Vercel ─────────────────────────────────────────────────────────────
+    echo "$line" | grep -qiE '(vercel_token|VERCEL_TOKEN)\s*[=:]\s*["\x27]?[A-Za-z0-9]{20,}' \
+      && flag_match "$file" "$line_no" "$line" "Vercel token hard-coded in file"
+
+    # ── Generic API keys / secrets ─────────────────────────────────────────
+    echo "$line" | grep -qiE '(api[_-]?key|apikey)\s*[=:]\s*["\x27]?[A-Za-z0-9_\-]{20,}' \
+      && flag_match "$file" "$line_no" "$line" "Generic API key"
+
+    echo "$line" | grep -qiE '(secret[_-]?key|secret_token|client_secret)\s*[=:]\s*["\x27]?[A-Za-z0-9_\-]{12,}' \
+      && flag_match "$file" "$line_no" "$line" "Hard-coded secret/client secret"
+
+    echo "$line" | grep -qiE '(access_token|ACCESS_TOKEN)\s*[=:]\s*["\x27]?[A-Za-z0-9_\.\-]{20,}' \
+      && flag_match "$file" "$line_no" "$line" "Hard-coded access token"
+
+    echo "$line" | grep -qiE '(password|passwd|db_password|db_pass)\s*[=:]\s*["\x27]?[^ "\x27]{8,}' \
+      && flag_match "$file" "$line_no" "$line" "Hard-coded password"
+
+    # ── Private keys ────────────────────────────────────────────────────────
+    echo "$line" | grep -qE '\-\-\-\-\-BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY' \
+      && flag_match "$file" "$line_no" "$line" "Private key (PEM format)"
+
+    # ── Connection strings ─────────────────────────────────────────────────
+    echo "$line" | grep -qE '(postgres|mysql|mongodb|redis):\/\/[^:]+:[^@]{3,}@' \
+      && flag_match "$file" "$line_no" "$line" "Database connection string with embedded password"
+
+    # ── JWT tokens ─────────────────────────────────────────────────────────
+    echo "$line" | grep -qE 'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' \
+      && flag_match "$file" "$line_no" "$line" "JWT token"
+
+    # ── Supabase ───────────────────────────────────────────────────────────
+    echo "$line" | grep -qiE '(service_role|supabase_service_role)\s*[=:]\s*["\x27]?ey[A-Za-z0-9_-]{20,}' \
+      && flag_match "$file" "$line_no" "$line" "Supabase service role key"
+
+  done < "$tmp_content_file"
+  rm -f "$tmp_content_file"
+
+done <<< "$staged_files"
+
+# ─── Result ───────────────────────────────────────────────────────────────────
+if [[ "$found" -ne 0 ]]; then
+  echo -e "${YELLOW}─────────────────────────────────────────────────────────────${RESET}"
+  echo -e "${BOLD}Wie beheben / How to fix:${RESET}"
+  echo -e "  1. Entferne / Remove the secret from the file."
+  echo -e "  2. Speichere es in / Store it in your ${BOLD}.env.local${RESET} (already in .gitignore)."
+  echo -e "  3. Nutze / Use GitHub Actions secrets for CI/CD values."
+  echo ""
+  echo -e "${BOLD}Falsch-Positiv / False positive${RESET} (e.g. example value in docs):"
+  echo -e "  Add  ${YELLOW}# notsecret${RESET}  at the end of that line."
+  echo ""
+  echo -e "${RED}Commit blockiert / Commit blocked. Fix the issues above and try again.${RESET}"
+  echo ""
+  exit 1
+fi
+
+echo -e "${GREEN}[pre-commit] Keine Geheimnisse gefunden / No secrets detected.${RESET}"
+exit 0
