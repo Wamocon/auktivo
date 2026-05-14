@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Search, Filter, Lock, Loader2, MapPin, Building2, Calendar, TrendingUp } from "lucide-react";
 import { RiskBadge } from "@/components/ui/risk-badge";
+import { daysUntil } from "@/lib/utils/date";
 import type { Profile, PropertyWithAnalysis, RiskLevel, PropertyType } from "@/lib/types/database";
 
 interface SearchClientProps {
@@ -20,11 +21,6 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   other: "Sonstiges",
 };
 
-function daysUntil(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
-}
 
 function PropertyCard({ property, locale }: { property: PropertyWithAnalysis; locale: string }) {
   const days = daysUntil(property.auction_date ?? null);
