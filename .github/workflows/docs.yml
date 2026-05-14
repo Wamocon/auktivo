@@ -1,11 +1,12 @@
 name: Docs - GitHub Pages
 
-# Veroeffentlicht das Produkthandbuch unter docs/ auf GitHub Pages
-# Lauft bei jedem Push auf allen Branches sowie manuell.
+# GitHub Pages Deployments sind nur vom Default-Branch (main) erlaubt.
+# Automatisch: bei Push in main.
+# Manuell: workflow_dispatch (nur von main aus ausfuehren).
 on:
   push:
     branches:
-      - "**"
+      - main
   workflow_dispatch:
     inputs:
       reason:
