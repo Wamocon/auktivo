@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "**"
+  workflow_dispatch:
 
 concurrency:
   group: validation-lint-${{ github.ref }}

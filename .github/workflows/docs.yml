@@ -2,14 +2,19 @@ name: Docs - GitHub Pages
 
 # Veroeffentlicht das Produkthandbuch unter docs/ auf GitHub Pages
 # Lauft bei Push in main wenn Dateien in docs/ geaendert wurden,
-# oder kann manuell ausgeloest werden.
+# oder kann manuell ausgeloest werden (workflow_dispatch).
 on:
   push:
     branches:
-      - main
+      - "**"
     paths:
       - "docs/**"
   workflow_dispatch:
+    inputs:
+      reason:
+        description: "Grund fuer manuellen Deploy"
+        required: false
+        default: "Manuell ausgeloest"
 
 concurrency:
   group: github-pages
