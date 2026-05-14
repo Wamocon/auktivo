@@ -9,6 +9,9 @@ concurrency:
   group: unit-tests-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Vitest Unit Tests
