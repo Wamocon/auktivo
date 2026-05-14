@@ -1,0 +1,360 @@
+{
+  "metadata": {
+    "title": "Auktivo - KI-Assistent fuer Zwangsversteigerungen",
+    "description": "Analysiere Zwangsversteigerungen in Minuten statt Stunden. KI-gestuetzte Risikoanalyse, Chat-Assistent und automatische Benachrichtigungen."
+  },
+  "nav": {
+    "search": "Suche",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "login": "Anmelden",
+    "register": "Kostenlos starten",
+    "dashboard": "Dashboard",
+    "favorites": "Favoriten",
+    "alerts": "Alarme",
+    "profile": "Profil",
+    "logout": "Abmelden",
+    "upgrade": "Upgrade auf Pro",
+    "admin": "Admin"
+  },
+  "hero": {
+    "badge": "KI-gestuetzte Analyse",
+    "title": "Zwangsversteigerungen intelligent analysieren",
+    "subtitle": "Was bisher 2 Stunden manuelle Pruefung kostete, erledigt Auktivo in Minuten. KI liest das Gutachten, extrahiert Risiken und beantwortet deine Fragen.",
+    "cta_primary": "Kostenlos starten",
+    "cta_secondary": "Wie funktioniert es?",
+    "stats": {
+      "properties": "12.500+ Objekte/Jahr",
+      "time": "Statt 2h nur 5min",
+      "visitors": "200.000 Besucher/Monat"
+    }
+  },
+  "problem": {
+    "title": "Warum 70% frustriert aufgeben",
+    "description": "Das staatliche ZVG-Portal zeigt Termine und Gutachten - aber als unleserliche 60- bis 100-seitige PDF- und TIF-Dateien. Ohne Fachwissen unmoeglich zu bewerten.",
+    "points": [
+      "Gutachten: 60-100 Seiten kaum lesbare Scans",
+      "Keine Filtermoeglichkeit nach Risiko",
+      "Juristische Fachbegriffe ohne Erklaerung",
+      "Teure Profi-Tools nur fuer Grossinvestoren"
+    ]
+  },
+  "solution": {
+    "title": "Auktivo loest das",
+    "step1_title": "Alle Termine aggregiert",
+    "step1_desc": "Taeglicher Import aller Zwangsversteigerungstermine aus dem ZVG-Portal. Filterbar nach PLZ, Objekttyp und Verkehrswert.",
+    "step2_title": "KI analysiert das Gutachten",
+    "step2_desc": "OCR liest das Dokument aus. Unsere KI MAX extrahiert Baulasten, Sanierungsbedarf, Mietprobleme und Grundbuchbelastungen.",
+    "step3_title": "Fragen stellen, sicher bieten",
+    "step3_desc": "Der KI-Chat-Assistent beantwortet deine Rueckfragen direkt - ohne Jurist, ohne Bausachverstaendiger."
+  },
+  "features": {
+    "title": "Alles was du brauchst",
+    "ai_analysis": {
+      "title": "KI-Risikoanalyse",
+      "desc": "Strukturierte Warnsignale fuer Baulasten, Sanierungsbedarf, Mietverhaeltnisse und Grundbuchbelastungen."
+    },
+    "ai_chat": {
+      "title": "KI-Chat-Assistent",
+      "desc": "Stelle Rueckfragen zum Gutachten in natuerlicher Sprache. Die KI antwortet auf Basis des analysierten Dokuments."
+    },
+    "alerts": {
+      "title": "Suchalarm",
+      "desc": "Erhalte sofort eine Benachrichtigung wenn neue Objekte in deinem Suchgebiet erscheinen."
+    },
+    "search": {
+      "title": "Erweiterte Suche",
+      "desc": "Suche nach PLZ, Umkreis, Objekttyp, Verkehrswert und Risikostufe."
+    }
+  },
+  "pricing": {
+    "title": "Einfache Preisgestaltung",
+    "subtitle": "Starte kostenlos, upgrade wenn du bereit bist.",
+    "free": {
+      "name": "Free",
+      "price": "0",
+      "period": "",
+      "features": [
+        "5 Suchen pro Monat",
+        "Basisdaten (Termin, Ort, Verkehrswert)",
+        "Originaldokumente einsehen",
+        "Kein KI-Chat",
+        "Keine Gutachtenanalyse",
+        "Kein Suchalarm"
+      ],
+      "cta": "Kostenlos starten"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "9,99",
+      "period": "/Monat",
+      "features": [
+        "Unbegrenzte Suchen",
+        "Vollstaendige KI-Gutachtenanalyse",
+        "KI-Chat-Assistent fuer Rueckfragen",
+        "Favoritenverwaltung",
+        "Suchalarm (Push + E-Mail)",
+        "Unbegrenzte PDF-Downloads"
+      ],
+      "cta": "Jetzt Pro starten",
+      "badge": "Beliebt"
+    },
+    "per_month": "pro Monat",
+    "cancel_anytime": "Jederzeit kuendigbar - keine Bindung",
+    "upgrade_now": "Jetzt upgraden",
+    "pro_features": {
+      "ai_analysis": "Vollstaendige KI-Gutachtenanalyse",
+      "ai_chat": "KI-Chat-Assistent fuer Rueckfragen",
+      "favorites": "Favoritenverwaltung",
+      "alerts": "Suchalarm (Push + E-Mail)",
+      "unlimited_search": "Unbegrenzte Suchen",
+      "risk_filter": "Risikofilter (Pro-Stufen)",
+      "priority_support": "Prioritaets-Support"
+    },
+    "faq": {
+      "cancel_title": "Kann ich jederzeit kuendigen?",
+      "cancel_desc": "Ja. Kuendige jederzeit selbst ohne Supportkontakt. Dein Pro-Zugang bleibt bis zum Ende des bezahlten Monats aktiv.",
+      "data_title": "Was passiert mit meinen Daten?",
+      "data_desc": "Du kannst alle deine Daten jederzeit exportieren oder dein Konto vollstaendig loeschen (DSGVO-konform)."
+    }
+  },
+  "disclaimer": {
+    "ai": "KI-Hinweis: Diese Analyse wurde automatisch erstellt und dient ausschliesslich der Orientierung. Sie ersetzt keine rechtliche, steuerliche oder bautechnische Fachberatung. WAMOCON GmbH uebernimmt keine Haftung fuer die Richtigkeit der KI-Ausgaben.",
+    "short": "KI-generierte Analyse - keine Rechtsberatung"
+  },
+  "auth": {
+    "login_title": "Willkommen zurueck",
+    "login_subtitle": "Melde dich bei deinem Auktivo-Konto an",
+    "register_title": "Konto erstellen",
+    "register_subtitle": "Kostenlos starten - keine Kreditkarte erforderlich",
+    "email": "E-Mail-Adresse",
+    "password": "Passwort",
+    "full_name": "Vollstaendiger Name",
+    "login_button": "Anmelden",
+    "register_button": "Konto erstellen",
+    "forgot_password": "Passwort vergessen?",
+    "no_account": "Noch kein Konto?",
+    "has_account": "Bereits ein Konto?",
+    "register_link": "Kostenlos registrieren",
+    "login_link": "Jetzt anmelden",
+    "check_email": "Bitte pruefe deine E-Mails",
+    "check_email_desc": "Wir haben dir einen Bestaetigunslink gesendet.",
+    "reset_title": "Passwort zuruecksetzen",
+    "reset_subtitle": "Gib deine E-Mail-Adresse ein. Wir senden dir einen Link.",
+    "reset_button": "Link senden",
+    "reset_success": "Link wurde gesendet. Bitte pruefe deine E-Mails.",
+    "errors": {
+      "invalid_credentials": "Ungueltige E-Mail oder Passwort.",
+      "email_not_confirmed": "Bitte bestaetigue zuerst deine E-Mail-Adresse.",
+      "generic": "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Willkommen, {name}!",
+    "new_properties": "Neue Objekte (letzte 7 Tage)",
+    "favorites": "Gespeicherte Favoriten",
+    "crawler_status": "Datenstand",
+    "search_count": "{used} von {limit} Suchen verbraucht",
+    "search_unlimited": "Unbegrenzte Suchen",
+    "upgrade_cta": "Upgrade auf Pro",
+    "no_favorites": "Noch keine Favoriten gespeichert.",
+    "view_all": "Alle anzeigen"
+  },
+  "search": {
+    "title": "Zwangsversteigerungen suchen",
+    "zip_placeholder": "PLZ eingeben...",
+    "radius": "Umkreis",
+    "radius_options": {
+      "10": "10 km",
+      "25": "25 km",
+      "50": "50 km",
+      "100": "100 km"
+    },
+    "property_type": "Objekttyp",
+    "property_types": {
+      "house": "Haus",
+      "apartment": "Wohnung",
+      "commercial": "Gewerbe",
+      "land": "Grundstueck",
+      "other": "Sonstige"
+    },
+    "value_range": "Verkehrswert",
+    "date_range": "Termin",
+    "risk_level": "Risikostufe",
+    "risk_levels": {
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch",
+      "critical": "Kritisch"
+    },
+    "search_button": "Suchen",
+    "results": "{count} Ergebnisse",
+    "no_results": "Keine Objekte gefunden. Bitte erweitere die Suchkriterien.",
+    "limit_reached": "Suchlimit erreicht. Upgrade auf Pro fuer unbegrenzte Suchen.",
+    "pro_filter_hint": "Pro-Feature",
+    "loading": "Lade Ergebnisse..."
+  },
+  "property": {
+    "details": "Details",
+    "court": "Amtsgericht",
+    "file_number": "Aktenzeichen",
+    "auction_date": "Versteigerungstermin",
+    "market_value": "Verkehrswert",
+    "minimum_bid": "Mindestgebot (Richtwert 50%)",
+    "documents": "Originaldokumente",
+    "download": "Herunterladen",
+    "bid_now": "Zum ZVG-Portal",
+    "add_favorite": "Favorit speichern",
+    "remove_favorite": "Favorit entfernen",
+    "start_chat": "KI-Chat starten",
+    "risk_analysis": "KI-Risikoanalyse",
+    "risk_level": {
+      "low": "Niedriges Risiko",
+      "medium": "Mittleres Risiko",
+      "high": "Hohes Risiko",
+      "critical": "Kritisches Risiko"
+    },
+    "risk_categories": {
+      "baulasten": "Baulasten",
+      "sanierungsbedarf": "Sanierungsbedarf",
+      "mietverhaeltnisse": "Mietverhaeltnisse",
+      "grundbuchbelastungen": "Grundbuchbelastungen",
+      "positive_signals": "Positive Aspekte"
+    },
+    "analysis_pending": "Analyse wird erstellt...",
+    "analysis_failed": "Analyse nicht verfuegbar",
+    "pro_required": "Fuer Pro-Nutzer verfuegbar",
+    "unlock_analysis": "Analyse freischalten",
+    "types": {
+      "house": "Haus",
+      "apartment": "Wohnung",
+      "commercial": "Gewerbe",
+      "land": "Grundstueck",
+      "other": "Sonstiges"
+    },
+    "status": {
+      "active": "Aktiv",
+      "withdrawn": "Zurueckgezogen",
+      "sold": "Zugeschlagen"
+    }
+  },
+  "chat": {
+    "title": "KI-Chat-Assistent",
+    "subtitle": "Stelle Fragen zum Gutachten",
+    "placeholder": "z.B. Was bedeutet diese Baulast konkret?",
+    "send": "Senden",
+    "thinking": "KI denkt nach...",
+    "disclaimer": "Alle Antworten ersetzen keine Fachberatung.",
+    "examples": [
+      "Was bedeutet diese Baulast konkret?",
+      "Wie hoch koennten die Sanierungskosten sein?",
+      "Welche Risiken soll ich besonders beachten?",
+      "Was ist eine Grundschuld und wie wirkt sie sich aus?"
+    ],
+    "error": "Fehler beim Senden. Bitte versuche es erneut.",
+    "session_limit": "Maximale Nachrichtenanzahl erreicht."
+  },
+  "alerts": {
+    "title": "Suchalarm",
+    "subtitle": "Erhalte Benachrichtigungen bei neuen Objekten",
+    "create": "Neuen Alarm erstellen",
+    "name": "Alarmname",
+    "name_placeholder": "z.B. Muenchen Wohnungen",
+    "zip_codes": "PLZ (kommagetrennt)",
+    "save": "Alarm speichern",
+    "no_alerts": "Noch kein Suchalarm. Erstelle deinen ersten Alarm.",
+    "active": "Aktiv",
+    "inactive": "Inaktiv",
+    "last_triggered": "Zuletzt ausgeloest",
+    "delete": "Loeschen",
+    "pro_required": "Suchwecker ist ein Pro-Feature",
+    "zip": "PLZ",
+    "radius": "Umkreis",
+    "email_notifications": "E-Mail-Benachrichtigungen aktivieren",
+    "empty": "Noch kein Suchalarm. Erstelle deinen ersten Alarm."
+  },
+  "favorites": {
+    "title": "Meine Favoriten",
+    "empty": "Du hast noch keine Favoriten gespeichert. Suche nach Objekten und speichere interessante."
+  },
+  "profile": {
+    "title": "Mein Profil",
+    "personal_data": "Persoenliche Daten",
+    "subscription": "Abonnement",
+    "security": "Sicherheit",
+    "privacy": "Datenschutz",
+    "current_plan": "Aktueller Plan",
+    "manage_subscription": "Abo verwalten",
+    "export_data": "Daten exportieren",
+    "delete_account": "Konto loeschen",
+    "delete_confirm": "Konto wirklich loeschen? Alle Daten werden unwiderruflich geloescht.",
+    "save_changes": "Aenderungen speichern",
+    "change_password": "Passwort aendern",
+    "current_password": "Aktuelles Passwort",
+    "new_password": "Neues Passwort",
+    "plan_free": "Free",
+    "plan_pro": "Pro",
+    "upgrade_hint": "Upgrade auf Pro fuer unbegrenzte Suchen und KI-Analyse.",
+    "name": "Name",
+    "email": "E-Mail",
+    "upgrade_to_pro": "Upgrade auf Pro",
+    "data_privacy": "Datenschutz & DSGVO",
+    "gdpr_notice": "Du hast das Recht auf Datenauskunft, Berichtigung und Loeschung gemaess DSGVO Art. 15-17.",
+    "logout": "Abmelden"
+  },
+  "footer": {
+    "company": "WAMOCON GmbH",
+    "links": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz",
+      "terms": "AGB",
+      "faq": "FAQ"
+    },
+    "disclaimer": "Auktivo ist kein Rechtsberatungsangebot. Alle KI-Analysen dienen zur Orientierung und ersetzen keine rechtliche, steuerliche oder bautechnische Fachberatung.",
+    "copyright": "2026 WAMOCON GmbH. Alle Rechte vorbehalten."
+  },
+  "errors": {
+    "not_found": "Seite nicht gefunden",
+    "not_found_title": "Seite nicht gefunden",
+    "not_found_desc": "Die gesuchte Seite existiert nicht.",
+    "not_found_message": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "server_error": "Serverfehler",
+    "server_error_title": "Serverfehler",
+    "server_error_desc": "Ein unerwarteter Fehler ist aufgetreten.",
+    "server_error_message": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.",
+    "go_home": "Zur Startseite",
+    "go_back": "Zurueck",
+    "try_again": "Erneut versuchen"
+  },
+  "common": {
+    "loading": "Laden...",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Loeschen",
+    "edit": "Bearbeiten",
+    "close": "Schliessen",
+    "back": "Zurueck",
+    "next": "Weiter",
+    "yes": "Ja",
+    "no": "Nein",
+    "or": "oder",
+    "eur": "EUR",
+    "pro_badge": "Pro",
+    "lock_tooltip": "Pro-Feature - Jetzt upgraden",
+    "beta": "Beta"
+  },
+  "faq": {
+    "title": "Haeufige Fragen",
+    "q1": "Was ist eine Zwangsversteigerung?",
+    "a1": "Eine Zwangsversteigerung ist ein gerichtliches Verfahren, bei dem Immobilien von Schuldnern zwangsweise verkauft werden, um Glaubigeransprueche zu befriedigen. Amtsgerichte koordinieren das Verfahren und veroeffentlichen Termine auf zvg-portal.de.",
+    "q2": "Wie sicher sind die KI-Analysen?",
+    "a2": "Unsere KI MAX analysiert die Gutachten mit einem konservativ eingestellten Ansatz - lieber zu viele Warnungen als zu wenige. Die Analysen sind eine erste Orientierung, ersetzen aber keine professionelle Fachberatung.",
+    "q3": "Welche Dokumente werden analysiert?",
+    "a3": "Auktivo liest alle vom ZVG-Portal verlinkten PDF- und TIF-Gutachten per OCR aus und uebergibt den Text an unsere KI MAX.",
+    "q4": "Kann ich jederzeit kuendigen?",
+    "a4": "Ja, vollstaendig selbststaendig im Profil ohne Supportkontakt. Dein Zugang bleibt bis Ende des bezahlten Monats aktiv.",
+    "q5": "Sind meine Daten DSGVO-konform gespeichert?",
+    "a5": "Ja. Alle Daten werden auf Supabase-Servern in der EU (Frankfurt) gespeichert. Du kannst deine Daten jederzeit exportieren oder dein Konto loeschen."
+  }
+}

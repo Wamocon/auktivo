@@ -1,0 +1,360 @@
+{
+  "metadata": {
+    "title": "Auktivo - AI Assistant for Foreclosure Auctions",
+    "description": "Analyze foreclosure auctions in minutes instead of hours. AI-powered risk analysis, chat assistant, and automatic notifications."
+  },
+  "nav": {
+    "search": "Search",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "login": "Sign In",
+    "register": "Start Free",
+    "dashboard": "Dashboard",
+    "favorites": "Favorites",
+    "alerts": "Alerts",
+    "profile": "Profile",
+    "logout": "Sign Out",
+    "upgrade": "Upgrade to Pro",
+    "admin": "Admin"
+  },
+  "hero": {
+    "badge": "AI-powered analysis",
+    "title": "Analyze foreclosure auctions intelligently",
+    "subtitle": "What used to take 2 hours of manual review, Auktivo does in minutes. AI reads the report, extracts risks, and answers your questions.",
+    "cta_primary": "Start for free",
+    "cta_secondary": "How does it work?",
+    "stats": {
+      "properties": "12,500+ properties/year",
+      "time": "5 min instead of 2h",
+      "visitors": "200,000 visitors/month"
+    }
+  },
+  "problem": {
+    "title": "Why 70% give up frustrated",
+    "description": "The official ZVG portal shows listings and reports - but as unreadable 60-100 page PDF and TIF files. Impossible to evaluate without expertise.",
+    "points": [
+      "Reports: 60-100 pages of barely readable scans",
+      "No filtering by risk level",
+      "Legal jargon without explanation",
+      "Expensive pro tools only for large investors"
+    ]
+  },
+  "solution": {
+    "title": "Auktivo solves this",
+    "step1_title": "All listings aggregated",
+    "step1_desc": "Daily import of all foreclosure listings from the ZVG portal. Filterable by zip code, property type, and market value.",
+    "step2_title": "AI analyzes the report",
+    "step2_desc": "OCR reads the document. Our AI MAX extracts encumbrances, renovation needs, tenant issues, and land register charges.",
+    "step3_title": "Ask questions, bid confidently",
+    "step3_desc": "The AI chat assistant answers your follow-up questions directly - no lawyer, no building expert needed."
+  },
+  "features": {
+    "title": "Everything you need",
+    "ai_analysis": {
+      "title": "AI Risk Analysis",
+      "desc": "Structured risk signals for encumbrances, renovation needs, tenancy issues, and land register charges."
+    },
+    "ai_chat": {
+      "title": "AI Chat Assistant",
+      "desc": "Ask follow-up questions about the report in natural language. AI responds based on the analyzed document."
+    },
+    "alerts": {
+      "title": "Search Alerts",
+      "desc": "Get notified immediately when new properties appear in your search area."
+    },
+    "search": {
+      "title": "Advanced Search",
+      "desc": "Search by zip code, radius, property type, market value, and risk level."
+    }
+  },
+  "pricing": {
+    "title": "Simple pricing",
+    "subtitle": "Start free, upgrade when ready.",
+    "free": {
+      "name": "Free",
+      "price": "0",
+      "period": "",
+      "features": [
+        "5 searches per month",
+        "Basic data (date, location, market value)",
+        "View original documents",
+        "No AI chat",
+        "No report analysis",
+        "No search alerts"
+      ],
+      "cta": "Start for free"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "9.99",
+      "period": "/month",
+      "features": [
+        "Unlimited searches",
+        "Full AI report analysis",
+        "AI chat assistant for follow-up questions",
+        "Favorites management",
+        "Search alerts (push + email)",
+        "Unlimited PDF downloads"
+      ],
+      "cta": "Start Pro now",
+      "badge": "Popular"
+    },
+    "per_month": "per month",
+    "cancel_anytime": "Cancel anytime - no commitment",
+    "upgrade_now": "Upgrade now",
+    "pro_features": {
+      "ai_analysis": "Full AI report analysis",
+      "ai_chat": "AI chat assistant for follow-up questions",
+      "favorites": "Favorites management",
+      "alerts": "Search alerts (push + email)",
+      "unlimited_search": "Unlimited searches",
+      "risk_filter": "Risk filter (Pro levels)",
+      "priority_support": "Priority support"
+    },
+    "faq": {
+      "cancel_title": "Can I cancel anytime?",
+      "cancel_desc": "Yes. Cancel anytime yourself without contacting support. Your Pro access remains active until the end of the paid month.",
+      "data_title": "What happens to my data?",
+      "data_desc": "You can export all your data at any time or fully delete your account (GDPR-compliant)."
+    }
+  },
+  "disclaimer": {
+    "ai": "AI Notice: This analysis was created automatically and serves as orientation only. It does not replace legal, tax, or technical expert advice. WAMOCON GmbH assumes no liability for the accuracy of AI outputs.",
+    "short": "AI-generated analysis - not legal advice"
+  },
+  "auth": {
+    "login_title": "Welcome back",
+    "login_subtitle": "Sign in to your Auktivo account",
+    "register_title": "Create account",
+    "register_subtitle": "Start for free - no credit card required",
+    "email": "Email address",
+    "password": "Password",
+    "full_name": "Full name",
+    "login_button": "Sign in",
+    "register_button": "Create account",
+    "forgot_password": "Forgot password?",
+    "no_account": "No account yet?",
+    "has_account": "Already have an account?",
+    "register_link": "Register for free",
+    "login_link": "Sign in now",
+    "check_email": "Check your email",
+    "check_email_desc": "We sent you a confirmation link.",
+    "reset_title": "Reset password",
+    "reset_subtitle": "Enter your email address. We'll send you a link.",
+    "reset_button": "Send link",
+    "reset_success": "Link sent. Please check your email.",
+    "errors": {
+      "invalid_credentials": "Invalid email or password.",
+      "email_not_confirmed": "Please confirm your email address first.",
+      "generic": "An error occurred. Please try again."
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {name}!",
+    "new_properties": "New properties (last 7 days)",
+    "favorites": "Saved favorites",
+    "crawler_status": "Data status",
+    "search_count": "{used} of {limit} searches used",
+    "search_unlimited": "Unlimited searches",
+    "upgrade_cta": "Upgrade to Pro",
+    "no_favorites": "No favorites saved yet.",
+    "view_all": "View all"
+  },
+  "search": {
+    "title": "Search foreclosure auctions",
+    "zip_placeholder": "Enter zip code...",
+    "radius": "Radius",
+    "radius_options": {
+      "10": "10 km",
+      "25": "25 km",
+      "50": "50 km",
+      "100": "100 km"
+    },
+    "property_type": "Property type",
+    "property_types": {
+      "house": "House",
+      "apartment": "Apartment",
+      "commercial": "Commercial",
+      "land": "Land",
+      "other": "Other"
+    },
+    "value_range": "Market value",
+    "date_range": "Auction date",
+    "risk_level": "Risk level",
+    "risk_levels": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "search_button": "Search",
+    "results": "{count} results",
+    "no_results": "No properties found. Please expand your search criteria.",
+    "limit_reached": "Search limit reached. Upgrade to Pro for unlimited searches.",
+    "pro_filter_hint": "Pro feature",
+    "loading": "Loading results..."
+  },
+  "property": {
+    "details": "Details",
+    "court": "Court",
+    "file_number": "File number",
+    "auction_date": "Auction date",
+    "market_value": "Market value",
+    "minimum_bid": "Minimum bid (guideline 50%)",
+    "documents": "Original documents",
+    "download": "Download",
+    "bid_now": "View on ZVG Portal",
+    "add_favorite": "Save as favorite",
+    "remove_favorite": "Remove favorite",
+    "start_chat": "Start AI chat",
+    "risk_analysis": "AI Risk Analysis",
+    "risk_level": {
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk",
+      "critical": "Critical risk"
+    },
+    "risk_categories": {
+      "baulasten": "Encumbrances",
+      "sanierungsbedarf": "Renovation needs",
+      "mietverhaeltnisse": "Tenancy issues",
+      "grundbuchbelastungen": "Land register charges",
+      "positive_signals": "Positive aspects"
+    },
+    "analysis_pending": "Analysis being created...",
+    "analysis_failed": "Analysis not available",
+    "pro_required": "Available for Pro users",
+    "unlock_analysis": "Unlock analysis",
+    "types": {
+      "house": "House",
+      "apartment": "Apartment",
+      "commercial": "Commercial",
+      "land": "Land",
+      "other": "Other"
+    },
+    "status": {
+      "active": "Active",
+      "withdrawn": "Withdrawn",
+      "sold": "Sold"
+    }
+  },
+  "chat": {
+    "title": "AI Chat Assistant",
+    "subtitle": "Ask questions about the report",
+    "placeholder": "e.g. What does this encumbrance mean exactly?",
+    "send": "Send",
+    "thinking": "AI is thinking...",
+    "disclaimer": "All answers do not replace professional advice.",
+    "examples": [
+      "What does this encumbrance mean exactly?",
+      "How high could the renovation costs be?",
+      "Which risks should I pay special attention to?",
+      "What is a land charge and how does it affect me?"
+    ],
+    "error": "Error sending. Please try again.",
+    "session_limit": "Maximum number of messages reached."
+  },
+  "alerts": {
+    "title": "Search Alerts",
+    "subtitle": "Get notifications for new properties",
+    "create": "Create new alert",
+    "name": "Alert name",
+    "name_placeholder": "e.g. Munich Apartments",
+    "zip_codes": "Zip codes (comma separated)",
+    "save": "Save alert",
+    "no_alerts": "No search alerts yet. Create your first alert.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "last_triggered": "Last triggered",
+    "delete": "Delete",
+    "pro_required": "Search alerts are a Pro feature",
+    "zip": "Zip code",
+    "radius": "Radius",
+    "email_notifications": "Enable email notifications",
+    "empty": "No search alerts yet. Create your first alert."
+  },
+  "favorites": {
+    "title": "My Favorites",
+    "empty": "You have no favorites yet. Search for properties and save interesting ones."
+  },
+  "profile": {
+    "title": "My Profile",
+    "personal_data": "Personal data",
+    "subscription": "Subscription",
+    "security": "Security",
+    "privacy": "Privacy",
+    "current_plan": "Current plan",
+    "manage_subscription": "Manage subscription",
+    "export_data": "Export data",
+    "delete_account": "Delete account",
+    "delete_confirm": "Really delete account? All data will be permanently deleted.",
+    "save_changes": "Save changes",
+    "change_password": "Change password",
+    "current_password": "Current password",
+    "new_password": "New password",
+    "plan_free": "Free",
+    "plan_pro": "Pro",
+    "upgrade_hint": "Upgrade to Pro for unlimited searches and AI analysis.",
+    "name": "Name",
+    "email": "Email",
+    "upgrade_to_pro": "Upgrade to Pro",
+    "data_privacy": "Privacy & GDPR",
+    "gdpr_notice": "You have the right to data access, rectification, and deletion under GDPR Art. 15-17.",
+    "logout": "Sign out"
+  },
+  "footer": {
+    "company": "WAMOCON GmbH",
+    "links": {
+      "imprint": "Imprint",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "faq": "FAQ"
+    },
+    "disclaimer": "Auktivo is not a legal advice service. All AI analyses serve as orientation and do not replace legal, tax, or technical expert advice.",
+    "copyright": "2026 WAMOCON GmbH. All rights reserved."
+  },
+  "errors": {
+    "not_found": "Page not found",
+    "not_found_title": "Page not found",
+    "not_found_desc": "The page you are looking for does not exist.",
+    "not_found_message": "The page you are looking for does not exist or has been moved.",
+    "server_error": "Server error",
+    "server_error_title": "Server error",
+    "server_error_desc": "An unexpected error has occurred.",
+    "server_error_message": "An unexpected error has occurred. Please try again.",
+    "go_home": "Go to homepage",
+    "go_back": "Go back",
+    "try_again": "Try again"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "eur": "EUR",
+    "pro_badge": "Pro",
+    "lock_tooltip": "Pro feature - Upgrade now",
+    "beta": "Beta"
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "q1": "What is a foreclosure auction?",
+    "a1": "A foreclosure auction is a court-supervised process in which a debtor's real estate is sold to satisfy creditor claims. Courts coordinate the process and publish listings on zvg-portal.de.",
+    "q2": "How reliable are the AI analyses?",
+    "a2": "Our AI MAX analyzes reports with a conservative approach - better to have too many warnings than too few. The analyses serve as initial orientation but do not replace professional advice.",
+    "q3": "Which documents are analyzed?",
+    "a3": "Auktivo reads all PDF and TIF reports linked on the ZVG portal via OCR and passes the text to our AI MAX.",
+    "q4": "Can I cancel anytime?",
+    "a4": "Yes, completely self-service in your profile without contacting support. Your access remains active until the end of the paid month.",
+    "q5": "Is my data stored GDPR-compliant?",
+    "a5": "Yes. All data is stored on Supabase servers in the EU (Frankfurt). You can export your data at any time or delete your account."
+  }
+}
