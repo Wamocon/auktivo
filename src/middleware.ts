@@ -2,26 +2,11 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
+import { isProtectedRoute, isAdminRoute, isAuthRoute, extractLocale } from "@/lib/utils/routes";
 
 const schema = (process.env.SUPABASE_DB_SCHEMA ?? "auktivo_dev") as string;
 
 const intlMiddleware = createMiddleware(routing);
-
-const protectedRoutes = ["/dashboard", "/suche", "/objekte", "/favoriten", "/alarme", "/profil", "/upgrade"];
-const adminRoutes = ["/admin"];
-const authRoutes = ["/login", "/registrieren", "/register", "/passwort-vergessen", "/passwort-zuruecksetzen"];
-
-function isProtectedRoute(pathname: string): boolean {
-  return protectedRoutes.some((route) => pathname.includes(route));
-}
-
-function isAdminRoute(pathname: string): boolean {
-  return adminRoutes.some((route) => pathname.includes(route));
-}
-
-function isAuthRoute(pathname: string): boolean {
-  return authRoutes.some((route) => pathname.includes(route));
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -57,7 +42,7 @@ export async function middleware(request: NextRequest) {
 
   // Nicht-authentifizierte Nutzer auf Login umleiten
   if (!user && isProtectedRoute(pathname)) {
-    const locale = pathname.split("/")[1] ?? "de";
+    const locale = extractLocale(pathname);
     return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
   }
 
@@ -70,14 +55,14 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (!profile?.is_admin) {
-      const locale = pathname.split("/")[1] ?? "de";
+      const locale = extractLocale(pathname);
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
   }
 
   // Eingeloggte Nutzer von Auth-Seiten weglenken
   if (user && isAuthRoute(pathname)) {
-    const locale = pathname.split("/")[1] ?? "de";
+    const locale = extractLocale(pathname);
     return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
   }
 

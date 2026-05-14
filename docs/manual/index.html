@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auktivo &ndash; Produkthandbuch | WAMOCON</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #f59e0b;
+      --primary-dark: #d97706;
+      --primary-glow: rgba(245,158,11,0.18);
+      --success:      #10b981;
+      --warning:      #f59e0b;
+      --danger:       #ef4444;
+      --bg-page:      #070a0f;
+      --bg-card:      rgba(15,20,35,0.8);
+      --bg-code:      #0d1526;
+      --border:       rgba(255,255,255,0.06);
+      --text:         #f1f5f9;
+      --text-muted:   #94a3b8;
+      --text-dim:     rgba(255,255,255,0.3);
+      --wmc-grad:     linear-gradient(135deg, #0d1526 0%, #1a2540 100%);
+    }
+
+    html { scroll-behavior: smooth; font-size: 15px; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-page);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    .page-header {
+      background: var(--wmc-grad);
+      border-bottom: 2px solid var(--primary);
+      box-shadow: 0 4px 20px rgba(245,158,11,0.1);
+      padding: 0 2rem;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; text-decoration: none; }
+    .logo-mark {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 900; color: #0d1526;
+      box-shadow: 0 4px 12px rgba(245,158,11,0.35);
+      transform: rotate(-5deg);
+    }
+    .brand-name { color: #fff; font-weight: 800; font-size: 1.1rem; }
+    .brand-sub  { color: var(--text-muted); font-size: 0.7rem; letter-spacing: 0.05em; font-weight: 600; }
+    .header-meta { color: var(--text-dim); font-size: 0.75rem; text-align: right; }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 70px);
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────── */
+    #toc-sidebar {
+      position: sticky;
+      top: 70px;
+      height: calc(100vh - 70px);
+      overflow-y: auto;
+      padding: 2rem 1.5rem;
+      border-right: 1px solid var(--border);
+      background: rgba(13,21,38,0.4);
+    }
+    .toc-title { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); margin-bottom: 1rem; }
+    .toc-link { display: block; padding: 0.5rem 0; color: var(--text-muted); text-decoration: none; font-size: 0.85rem; transition: 0.2s; }
+    .toc-link:hover { color: var(--primary); transform: translateX(4px); }
+    .toc-link.l1 { font-weight: 700; color: var(--text); border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 1rem; }
+    .toc-link.l2 { padding-left: 1rem; font-size: 0.8rem; }
+    .toc-link.l1:first-of-type { border-top: none; margin-top: 0; }
+
+    /* ── Main ───────────────────────────────────────────────── */
+    main { padding: 3rem 4rem 6rem; max-width: 900px; }
+
+    /* ── Cover ──────────────────────────────────────────────── */
+    .cover {
+      background: linear-gradient(160deg, rgba(120,80,0,0.2) 0%, rgba(13,21,38,0.9) 100%);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 24px;
+      padding: 4rem;
+      margin-bottom: 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .doc-type { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: var(--primary); margin-bottom: 1rem; }
+    .cover h1 { font-size: 3rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+    .cover-sub { font-size: 1.2rem; color: var(--text-muted); margin-bottom: 3rem; }
+    .cover-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 2rem; }
+    .meta-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 0.3rem; }
+    .meta-value { font-weight: 700; font-size: 1rem; }
+
+    /* ── Typography ─────────────────────────────────────────── */
+    h2 { font-size: 2rem; font-weight: 900; margin: 4rem 0 1.5rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.8rem; }
+    h2 .num { color: var(--primary); opacity: 0.5; font-size: 1.2rem; }
+    h3 { font-size: 1.3rem; font-weight: 800; margin: 2.5rem 0 1rem; color: var(--primary); }
+    p { margin-bottom: 1.2rem; }
+    ul, ol { margin-bottom: 1.5rem; padding-left: 1.5rem; }
+    li { margin-bottom: 0.52rem; }
+    li::marker { color: var(--primary); }
+    strong { color: #fff; }
+    code { background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px; padding: 0.15em 0.45em; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.88em; color: var(--primary); }
+
+    /* ── Cards & Blocks ─────────────────────────────────────── */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin: 1.5rem 0; }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-success { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
+    .badge-primary { background: var(--primary-glow); color: var(--primary); border: 1px solid rgba(245,158,11,0.2); }
+    .badge-danger  { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+
+    .info-box { padding: 1.2rem 1.5rem; border-radius: 12px; margin: 2rem 0; border-left: 4px solid var(--primary); background: rgba(245,158,11,0.05); }
+    .info-box-title { font-weight: 900; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); margin-bottom: 0.5rem; }
+
+    .warn-box { padding: 1.2rem 1.5rem; border-radius: 12px; margin: 2rem 0; border-left: 4px solid var(--danger); background: rgba(239,68,68,0.05); }
+    .warn-box-title { font-weight: 900; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--danger); margin-bottom: 0.5rem; }
+
+    /* ── Feature Grid ────────────────────────────────────────── */
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 2rem 0; }
+    .feature-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; }
+    .feature-icon { font-size: 1.8rem; margin-bottom: 0.7rem; }
+    .feature-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 0.4rem; color: #fff; }
+    .feature-desc { font-size: 0.82rem; color: var(--text-muted); }
+
+    /* ── Table ───────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: 2rem 0; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { text-align: left; padding: 1rem; background: rgba(255,255,255,0.02); color: var(--text-muted); font-weight: 800; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.1em; }
+    td { padding: 1rem; border-top: 1px solid var(--border); vertical-align: top; }
+    tr:hover td { background: rgba(245,158,11,0.02); }
+
+    /* ── Check / Cross ───────────────────────────────────────── */
+    .yes { color: var(--success); font-weight: 700; }
+    .no  { color: var(--text-dim); }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    .page-footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 4rem;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 1000px) {
+      .layout { grid-template-columns: 1fr; }
+      #toc-sidebar { display: none; }
+      main { padding: 2rem 1.5rem; }
+      .cover { padding: 2.5rem; }
+      .cover h1 { font-size: 2rem; }
+      .page-footer { flex-direction: column; gap: 0.5rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <a class="brand" href="#">
+    <div class="logo-mark">A</div>
+    <div>
+      <div class="brand-name">Auktivo</div>
+      <div class="brand-sub">Zwangsversteigerungs-Analyse</div>
+    </div>
+  </a>
+  <div class="header-meta">
+    Produkthandbuch v1.0 &middot; Mai 2026<br>
+    <strong>Vertraulich &middot; WAMOCON GmbH</strong>
+  </div>
+</header>
+
+<div class="layout">
+
+  <nav id="toc-sidebar">
+    <div class="toc-title">Inhalt</div>
+
+    <a class="toc-link l1" href="#uebersicht">1. &Uuml;bersicht</a>
+
+    <a class="toc-link l1" href="#business-model">2. Business Model</a>
+    <a class="toc-link l2" href="#planuebersicht">2.1 Plan&uuml;bersicht</a>
+    <a class="toc-link l2" href="#suche-limit">2.2 Free-Limit &amp; Upgrade</a>
+    <a class="toc-link l2" href="#stripe">2.3 Stripe-Zahlung</a>
+
+    <a class="toc-link l1" href="#tutorials">3. Tutorials</a>
+    <a class="toc-link l2" href="#tut-start">3.1 Konto erstellen</a>
+    <a class="toc-link l2" href="#tut-suche">3.2 Erste Suche</a>
+    <a class="toc-link l2" href="#tut-analyse">3.3 KI-Analyse starten</a>
+    <a class="toc-link l2" href="#tut-chat">3.4 KI-Chat nutzen</a>
+    <a class="toc-link l2" href="#tut-upgrade">3.5 Auf Pro upgraden</a>
+
+    <a class="toc-link l1" href="#howto">4. How-to Guides</a>
+    <a class="toc-link l2" href="#ht-favoriten">4.1 Favoriten verwalten</a>
+    <a class="toc-link l2" href="#ht-alarm">4.2 Alarm einrichten</a>
+    <a class="toc-link l2" href="#ht-profil">4.3 Profil &amp; Konto</a>
+    <a class="toc-link l2" href="#ht-konto-loeschen">4.4 Konto l&ouml;schen</a>
+    <a class="toc-link l2" href="#ht-admin">4.5 Admin-Bereich</a>
+
+    <a class="toc-link l1" href="#referenz">5. Funktionsreferenz</a>
+    <a class="toc-link l2" href="#routen">5.1 Routen</a>
+    <a class="toc-link l2" href="#ki-disclaimer">5.2 KI-Disclaimer</a>
+    <a class="toc-link l2" href="#feature-gate">5.3 Feature-Gate (Free/Pro)</a>
+
+    <a class="toc-link l1" href="#tech">6. Technische Architektur</a>
+    <a class="toc-link l2" href="#tech-stack">6.1 Stack</a>
+    <a class="toc-link l2" href="#tech-crawler">6.2 Crawler-Mechanismus</a>
+    <a class="toc-link l2" href="#tech-ocr">6.3 OCR-Pipeline</a>
+    <a class="toc-link l2" href="#tech-ai">6.4 KI-Analyse</a>
+    <a class="toc-link l2" href="#tech-schema">6.5 Datenbank-Schema</a>
+
+    <a class="toc-link l1" href="#ci-cd">7. CI/CD &amp; Tests</a>
+
+    <a class="toc-link l1" href="#compliance">8. DSGVO &amp; Compliance</a>
+
+    <a class="toc-link l1" href="#glossar">9. Glossar</a>
+  </nav>
+
+  <main>
+
+    <!-- ── Cover ─────────────────────────────────────────────── -->
+    <div class="cover">
+      <div class="doc-type">Produkthandbuch &middot; WAMOCON GmbH</div>
+      <h1>Auktivo</h1>
+      <div class="cover-sub">KI-gest&uuml;tzte Zwangsversteigerungsanalyse f&uuml;r Privatpersonen und Einsteiger-Investoren</div>
+      <div class="cover-meta">
+        <div><div class="meta-label">Version</div><div class="meta-value">1.0.0</div></div>
+        <div><div class="meta-label">Status</div><div class="meta-value"><span class="badge badge-success">Produktiv</span></div></div>
+        <div><div class="meta-label">Pl&auml;ne</div><div class="meta-value">Free &middot; Pro</div></div>
+        <div><div class="meta-label">Pro-Preis</div><div class="meta-value">9,99 &euro;/Monat</div></div>
+        <div><div class="meta-label">Datum</div><div class="meta-value">Mai 2026</div></div>
+      </div>
+    </div>
+
+    <!-- ── 1. Übersicht ─────────────────────────────────────── -->
+    <section id="uebersicht">
+      <h2><span class="num">01</span> &Uuml;bersicht</h2>
+
+      <p>Auktivo ist eine webbasierte SaaS-Plattform, die Zwangsversteigerungen aus dem staatlichen ZVG-Portal automatisch aggregiert, Gutachten per OCR ausliest und per K&uuml;nstlicher Intelligenz analysiert. Was bisher 1,5 bis 3 Stunden manueller Pr&uuml;fung kostete, dauert mit Auktivo nur wenige Minuten.</p>
+
+      <div class="card">
+        <strong>Was Auktivo l&ouml;st:</strong> Das staatliche ZVG-Portal ver&ouml;ffentlicht rund 12.500 Zwangsversteigerungen pro Monat als unleserliche PDF- und TIF-Dokumente. Privatpersonen ohne Fachkenntnisse sind davon faktisch ausgeschlossen. Auktivo liest diese Dokumente automatisch aus, extrahiert Risikosignale (Baulasten, Mietprobleme, Grundbuchbelastungen) und stellt einen KI-Chat-Assistenten f&uuml;r R&uuml;ckfragen bereit.
+      </div>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">&#128269;</div>
+          <div class="feature-title">Automatische Aggregation</div>
+          <div class="feature-desc">T&auml;glicher Crawler h&auml;lt alle ZVG-Termine und Gutachten aktuell &ndash; kein manuelles Nachschauen.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128196;</div>
+          <div class="feature-title">OCR-Auslesung</div>
+          <div class="feature-desc">PDF- und TIF-Gutachten werden automatisch in durchsuchbaren Text umgewandelt.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#9889;</div>
+          <div class="feature-title">KI-Risikoanalyse</div>
+          <div class="feature-desc">Baulasten, Sanierungsr&uuml;ckst&auml;nde, Mietprobleme und Grundbuchbelastungen werden strukturiert hervorgehoben.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128172;</div>
+          <div class="feature-title">KI-Chat-Assistent</div>
+          <div class="feature-desc">R&uuml;ckfragen zum Gutachten in nat&uuml;rlicher Sprache &ndash; ohne Rechtskenntnisse.</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#128276;</div>
+          <div class="feature-title">Alarm-Funktion</div>
+          <div class="feature-desc">Push- und E-Mail-Benachrichtigung bei neuen Versteigerungen im eigenen Suchgebiet (Pro).</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">&#11088;</div>
+          <div class="feature-title">Favoriten</div>
+          <div class="feature-desc">Interessante Objekte merken und sp&auml;ter aufrufen (Pro).</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nutzerrolle</th><th>Beschreibung</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Free-Nutzer</strong></td><td>Bis zu 5 Suchen pro Monat, Basisdaten (Termin, Ort, Verkehrswert), kein KI-Zugang</td></tr>
+            <tr><td><strong>Pro-Nutzer</strong></td><td>Unbegrenzte Suche, vollst&auml;ndige KI-Analyse, KI-Chat, Alarme, Favoriten, PDF-Download</td></tr>
+            <tr><td><strong>Admin (WAMOCON)</strong></td><td>Nutzerverwaltung, Crawler-Konfiguration, Abo-Verwaltung, manueller Re-Import</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── 2. Business Model ────────────────────────────────── -->
+    <section id="business-model">
+      <h2><span class="num">02</span> Business Model</h2>
+
+      <h3 id="planuebersicht">2.1 Plan&uuml;bersicht</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Feature</th><th>Free</th><th>Pro (9,99 &euro;/Monat)</th></tr></thead>
+          <tbody>
+            <tr><td>Versteigerungstermine einsehen</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Basisdaten (Termin, Ort, Verkehrswert)</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Suche nach PLZ, Umkreis, Objekttyp</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Mehrsprachige Oberfl&auml;che (DE / EN)</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Hellmodus / Dunkelmodus</td><td class="yes">&#10003;</td><td class="yes">&#10003;</td></tr>
+            <tr><td><strong>Suchanfragen pro Monat</strong></td><td><strong>Max. 5</strong></td><td class="yes"><strong>Unbegrenzt</strong></td></tr>
+            <tr><td>KI-Risikoanalyse (Baulasten, Mietprobleme, Grundbuch)</td><td class="no">&#10007;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>KI-Chat-Assistent f&uuml;r Gutachten-R&uuml;ckfragen</td><td class="no">&#10007;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Alarm-Funktion (Push / E-Mail)</td><td class="no">&#10007;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Favoritenliste</td><td class="no">&#10007;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>PDF-Download (Original-Gutachten)</td><td class="no">&#10007;</td><td class="yes">&#10003;</td></tr>
+            <tr><td>Self-Service-K&uuml;ndigung</td><td>&ndash;</td><td class="yes">&#10003;</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="suche-limit">2.2 Free-Limit &amp; Upgrade-Druck</h3>
+      <p>Das Free-Limit von 5 Suchanfragen pro Monat wird serverseitig &uuml;ber den Feature-Gate-Mechanismus erzwungen. Der Z&auml;hler wird pro Nutzeraccount gef&uuml;hrt und monatlich zur&uuml;ckgesetzt.</p>
+
+      <div class="info-box">
+        <div class="info-box-title">Upgrade-Logik</div>
+        <p>Bei der 5. Suche wird dem Free-Nutzer eine Upgrade-Aufforderung mit Lock-Icon eingeblendet. Die KI-Analyse ist auf der Objektdetailseite sichtbar, aber gesperrt. Der KI-Chat wird nur Pro-Nutzern angezeigt. Diese sichtbare Abgrenzung erzeugt organischen Upgrade-Druck.</p>
+      </div>
+
+      <h3 id="stripe">2.3 Stripe-Zahlung</h3>
+      <ol>
+        <li>Klick auf <strong>&bdquo;Auf Pro upgraden&ldquo;</strong> im Dashboard oder auf jeder gesperrten Funktion</li>
+        <li>Weiterleitung zum Stripe Checkout (monatlich, k&uuml;ndbar)</li>
+        <li>Nach erfolgreicher Zahlung: Plan wird automatisch auf <code>pro</code> umgestellt</li>
+        <li>K&uuml;ndigung jederzeit im Profil unter <code>/[locale]/profil</code> per Self-Service</li>
+        <li>Stripe Customer Portal erlaubt Zahlungsmethoden-&Auml;nderung und K&uuml;ndigungsbest&auml;tigung</li>
+      </ol>
+    </section>
+
+    <!-- ── 3. Tutorials ──────────────────────────────────────── -->
+    <section id="tutorials">
+      <h2><span class="num">03</span> Tutorials &ndash; Erste Schritte</h2>
+
+      <h3 id="tut-start">3.1 Konto erstellen</h3>
+      <ol>
+        <li><code>auktivo.app/de/auth/registrieren</code> aufrufen</li>
+        <li>E-Mail-Adresse und Passwort (min. 8 Zeichen) eingeben</li>
+        <li>AGB und Datenschutzerkl&auml;rung akzeptieren</li>
+        <li><strong>&bdquo;Kostenlos starten&ldquo;</strong> klicken</li>
+        <li>Best&auml;tigungslink in der E-Mail anklicken</li>
+        <li>Weiterleitung zum Dashboard &ndash; Konto ist aktiv</li>
+      </ol>
+
+      <h3 id="tut-suche">3.2 Erste Suche starten</h3>
+      <ol>
+        <li>Im Dashboard auf <strong>&bdquo;Suche&ldquo;</strong> klicken oder <code>/[locale]/suche</code> aufrufen</li>
+        <li>PLZ oder Ort eingeben</li>
+        <li>Optionale Filter setzen: Umkreis (km), Objekttyp (Haus / Wohnung / Gewerbe), Termin-Datum, Verkehrswert-Bereich</li>
+        <li><strong>&bdquo;Suchen&ldquo;</strong> klicken &rarr; Ergebnisliste erscheint</li>
+        <li>Objekt-Karte anklicken &rarr; Detailseite &ouml;ffnet sich</li>
+      </ol>
+      <div class="info-box">
+        <div class="info-box-title">Free-Limit</div>
+        <p>Im Free-Plan sind maximal 5 Suchanfragen pro Monat m&ouml;glich. Der aktuelle Z&auml;hler ist im Dashboard sichtbar.</p>
+      </div>
+
+      <h3 id="tut-analyse">3.3 KI-Risikoanalyse starten (Pro)</h3>
+      <ol>
+        <li>Objekt-Detailseite &ouml;ffnen</li>
+        <li>Abschnitt <strong>&bdquo;KI-Risikoanalyse&ldquo;</strong> ist sichtbar (Pro-Nutzer) oder gesperrt (Free)</li>
+        <li>Klick auf <strong>&bdquo;Analyse starten&ldquo;</strong></li>
+        <li>Die KI liest das Gutachten aus und extrahiert:
+          <ul>
+            <li>Baulasten und grundst&uuml;cksrechtliche Belastungen</li>
+            <li>Sanierungsr&uuml;ckst&auml;nde und Baumangel</li>
+            <li>Mietverh&auml;ltnisse und Problemmieter</li>
+            <li>Grundbuch-Belastungen (Hypotheken, Dienstbarkeiten)</li>
+          </ul>
+        </li>
+        <li>Ergebnis: strukturierte Warnsignal-&Uuml;bersicht mit Ampelfarben</li>
+      </ol>
+      <div class="warn-box">
+        <div class="warn-box-title">KI-Disclaimer</div>
+        <p>Alle KI-Analysen dienen der Orientierung. Sie ersetzen keine rechtliche, steuerliche oder bautechnische Fachberatung. Auktivo &uuml;bernimmt keine Haftung f&uuml;r Entscheidungen auf Basis der KI-Ausgaben.</p>
+      </div>
+
+      <h3 id="tut-chat">3.4 KI-Chat-Assistent nutzen (Pro)</h3>
+      <ol>
+        <li>Objekt-Detailseite &ouml;ffnen (nach abgeschlossener Analyse)</li>
+        <li>Chat-Bereich am unteren Seitenrand &ouml;ffnen</li>
+        <li>Frage in nat&uuml;rlicher Sprache eingeben, z.&nbsp;B.:<br>
+            <em>&bdquo;Was bedeutet die erw&auml;hnte Baulast konkret?&ldquo;</em><br>
+            <em>&bdquo;Wie hoch k&ouml;nnten die Sanierungskosten sein?&ldquo;</em></li>
+        <li>Die KI antwortet auf Basis des analysierten Gutachtens &ndash; der Kontext bleibt f&uuml;r die gesamte Sitzung erhalten (max. 20 Nachrichten)</li>
+        <li>Jede Antwort tr&auml;gt den KI-Disclaimer sichtbar</li>
+      </ol>
+
+      <h3 id="tut-upgrade">3.5 Auf Pro upgraden</h3>
+      <ol>
+        <li>Im Dashboard auf <strong>&bdquo;Auf Pro upgraden&ldquo;</strong> klicken, oder eine gesperrte Funktion anklicken</li>
+        <li>Stripe Checkout &ouml;ffnet sich im selben Fenster</li>
+        <li>Zahlungsdaten eingeben (Kreditkarte, SEPA-Lastschrift)</li>
+        <li>Nach Zahlung: automatische R&uuml;ckleitung zum Dashboard mit aktiviertem Pro-Status</li>
+      </ol>
+    </section>
+
+    <!-- ── 4. How-to Guides ──────────────────────────────────── -->
+    <section id="howto">
+      <h2><span class="num">04</span> How-to Guides</h2>
+
+      <h3 id="ht-favoriten">4.1 Favoriten verwalten (Pro)</h3>
+      <ol>
+        <li>Auf der Objekt-Detailseite das <strong>Stern-Symbol &#11088;</strong> anklicken &rarr; Objekt wird in Favoriten gespeichert</li>
+        <li>Im Dashboard unter <strong>&bdquo;Meine Favoriten&ldquo;</strong> alle gespeicherten Objekte einsehen</li>
+        <li>Stern erneut anklicken &rarr; Objekt aus Favoriten entfernen</li>
+      </ol>
+
+      <h3 id="ht-alarm">4.2 Suchalarm einrichten (Pro)</h3>
+      <ol>
+        <li>Im Dashboard <strong>&bdquo;Neuer Alarm&ldquo;</strong> klicken</li>
+        <li>Suchgebiet definieren: PLZ, Umkreis, Objekttyp, Wertbereich</li>
+        <li>Benachrichtigungskanal w&auml;hlen: E-Mail, Push oder beides</li>
+        <li><strong>&bdquo;Alarm speichern&ldquo;</strong> &ndash; ab sofort werden bei neuen Eintr&auml;gen Benachrichtigungen gesendet</li>
+        <li>Alarme in den Profileinstellungen jederzeit bearbeiten oder l&ouml;schen</li>
+      </ol>
+
+      <h3 id="ht-profil">4.3 Profil &amp; Abonnement verwalten</h3>
+      <ol>
+        <li><code>/[locale]/profil</code> aufrufen</li>
+        <li>Stammdaten (Name, E-Mail) &auml;ndern &rarr; <strong>&bdquo;Speichern&ldquo;</strong></li>
+        <li>Passwort &auml;ndern &rarr; Best&auml;tigungs-E-Mail wird versandt</li>
+        <li>Abo-Status und n&auml;chstes Abrechnungsdatum einsehen</li>
+        <li>Zahlungsmethode &auml;ndern &rarr; Weiterleitung zum Stripe Customer Portal</li>
+        <li>Pro-Abo k&uuml;ndigen &rarr; Weiterleitung zum Stripe Customer Portal (K&uuml;ndigung zum Periodenende)</li>
+      </ol>
+
+      <h3 id="ht-konto-loeschen">4.4 Konto l&ouml;schen (DSGVO)</h3>
+      <ol>
+        <li><code>/[locale]/profil</code> aufrufen &rarr; Abschnitt <strong>&bdquo;Konto l&ouml;schen&ldquo;</strong></li>
+        <li>Best&auml;tigungsdialog &ouml;ffnet sich &ndash; Vorgang ist <strong>nicht r&uuml;ckg&auml;ngig zu machen</strong></li>
+        <li>Best&auml;tigung eingeben und <strong>&bdquo;Konto unwiderruflich l&ouml;schen&ldquo;</strong> klicken</li>
+        <li>Alle personenbezogenen Daten werden gel&ouml;scht (DSGVO Art. 17)</li>
+        <li>Aktives Pro-Abo wird bei Stripe sofort gek&uuml;ndigt</li>
+      </ol>
+
+      <h3 id="ht-admin">4.5 Admin-Bereich (WAMOCON intern)</h3>
+      <ol>
+        <li><code>/[locale]/admin</code> aufrufen (nur mit Admin-Rolle zug&auml;nglich)</li>
+        <li><strong>Nutzerverwaltung</strong>: Nutzer suchen, Plan &auml;ndern, Konto sperren</li>
+        <li><strong>Crawler-Status</strong>: letzter Lauf, Anzahl importierter Eintr&auml;ge, Fehlerprotokoll</li>
+        <li><strong>Manueller Re-Import</strong>: Crawler sofort ausf&uuml;hren (z.&nbsp;B. nach Fehler)</li>
+        <li><strong>Abo-Verwaltung</strong>: Plan manuell umschalten, Free-Limit f&uuml;r einzelne Nutzer anpassen</li>
+      </ol>
+    </section>
+
+    <!-- ── 5. Funktionsreferenz ──────────────────────────────── -->
+    <section id="referenz">
+      <h2><span class="num">05</span> Funktionsreferenz</h2>
+
+      <h3 id="routen">5.1 Routen-&Uuml;bersicht</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Route</th><th>Beschreibung</th><th>Zugriff</th></tr></thead>
+          <tbody>
+            <tr><td><code>/[locale]</code></td><td>Startseite / Marketing</td><td>Alle</td></tr>
+            <tr><td><code>/[locale]/auth/anmelden</code></td><td>Login</td><td>&Ouml;ffentlich</td></tr>
+            <tr><td><code>/[locale]/auth/registrieren</code></td><td>Registrierung</td><td>&Ouml;ffentlich</td></tr>
+            <tr><td><code>/[locale]/auth/passwort-vergessen</code></td><td>Passwort zur&uuml;cksetzen</td><td>&Ouml;ffentlich</td></tr>
+            <tr><td><code>/[locale]/dashboard</code></td><td>Nutzer-Dashboard</td><td>Eingeloggt</td></tr>
+            <tr><td><code>/[locale]/suche</code></td><td>Suchmaske mit Filterfunktion</td><td>Eingeloggt</td></tr>
+            <tr><td><code>/[locale]/objekte/[id]</code></td><td>Objekt-Detailseite mit KI-Analyse</td><td>Eingeloggt</td></tr>
+            <tr><td><code>/[locale]/profil</code></td><td>Profil, Abo, Konto</td><td>Eingeloggt</td></tr>
+            <tr><td><code>/[locale]/upgrade</code></td><td>Upgrade-Seite (Free &rarr; Pro)</td><td>Eingeloggt</td></tr>
+            <tr><td><code>/[locale]/admin</code></td><td>Admin-Dashboard</td><td>Admin only</td></tr>
+            <tr><td><code>/[locale]/impressum</code></td><td>Impressum</td><td>Alle</td></tr>
+            <tr><td><code>/[locale]/datenschutz</code></td><td>Datenschutzerkl&auml;rung</td><td>Alle</td></tr>
+            <tr><td><code>/[locale]/agb</code></td><td>Allgemeine Gesch&auml;ftsbedingungen</td><td>Alle</td></tr>
+            <tr><td><code>/api/stripe/webhook</code></td><td>Stripe-Webhook (intern)</td><td>Stripe only</td></tr>
+            <tr><td><code>/api/crawler/trigger</code></td><td>Manueller Crawler-Start</td><td>Admin only</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="ki-disclaimer">5.2 KI-Disclaimer-Pflicht</h3>
+      <p>Jede KI-Ausgabe &ndash; Risikoanalyse wie Chat-Antwort &ndash; tr&auml;gt folgenden Pflicht-Disclaimer:</p>
+      <div class="warn-box">
+        <div class="warn-box-title">Pflicht-Disclaimer (alle KI-Ausgaben)</div>
+        <p><em>&bdquo;Alle KI-Analysen und Chat-Antworten dienen ausschlie&szlig;lich der Orientierung. Sie ersetzen keine rechtliche, steuerliche oder bautechnische Fachberatung. WAMOCON GmbH &uuml;bernimmt keine Haftung f&uuml;r Entscheidungen, die auf Basis dieser KI-Ausgaben getroffen werden.&ldquo;</em></p>
+      </div>
+
+      <h3 id="feature-gate">5.3 Feature-Gate (Free / Pro)</h3>
+      <p>Der Feature-Gate-Mechanismus erzwingt die Plan-Abgrenzung serverseitig. Die Logik liegt in <code>src/lib/feature-gate.ts</code>.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Funktion</th><th>Free</th><th>Pro</th><th>Gate-Typ</th></tr></thead>
+          <tbody>
+            <tr><td>Suchanfrage ausf&uuml;hren</td><td>Max. 5 / Monat</td><td class="yes">Unbegrenzt</td><td>Z&auml;hler (<code>checkSearchLimit</code>)</td></tr>
+            <tr><td>KI-Risikoanalyse</td><td class="no">Gesperrt</td><td class="yes">Aktiv</td><td><code>canAccess("ai_analysis")</code></td></tr>
+            <tr><td>KI-Chat</td><td class="no">Gesperrt</td><td class="yes">Aktiv</td><td><code>canAccess("ai_chat")</code></td></tr>
+            <tr><td>Alarm-Funktion</td><td class="no">Gesperrt</td><td class="yes">Aktiv</td><td><code>canAccess("alerts")</code></td></tr>
+            <tr><td>Favoriten</td><td class="no">Gesperrt</td><td class="yes">Aktiv</td><td><code>canAccess("favorites")</code></td></tr>
+            <tr><td>PDF-Download</td><td class="no">Gesperrt</td><td class="yes">Aktiv</td><td><code>canAccess("pdf_download")</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── 6. Technische Architektur ─────────────────────────── -->
+    <section id="tech">
+      <h2><span class="num">06</span> Technische Architektur</h2>
+
+      <h3 id="tech-stack">6.1 Stack</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Schicht</th><th>Technologie</th><th>Aufgabe</th></tr></thead>
+          <tbody>
+            <tr><td>Frontend &amp; Backend</td><td>Next.js 16 (App Router), TypeScript</td><td>SSR, API-Routen, Middleware</td></tr>
+            <tr><td>Styling</td><td>Tailwind CSS v4</td><td>Utility-First, Dark/Light Mode</td></tr>
+            <tr><td>Datenbank &amp; Auth</td><td>Supabase (PostgreSQL, RLS)</td><td>Schema <code>auktivo_dev</code> / <code>auktivo</code></td></tr>
+            <tr><td>KI-Analyse &amp; Chat</td><td>AI MAX (OpenAI-kompatibel, selbst gehostet)</td><td>Risikoextraktion, Chat-Streaming</td></tr>
+            <tr><td>Web-Crawling</td><td>Python (Scrapy / Playwright)</td><td>T&auml;glicher ZVG-Import</td></tr>
+            <tr><td>OCR</td><td>AWS Textract / Google Document AI</td><td>PDF &amp; TIF &rarr; Text</td></tr>
+            <tr><td>Payment</td><td>Stripe</td><td>Pro-Abonnement, Customer Portal</td></tr>
+            <tr><td>E-Mail</td><td>Resend</td><td>Alarm-E-Mails, Transaktions-E-Mails</td></tr>
+            <tr><td>i18n</td><td>next-intl v4</td><td>Deutsch (prim&auml;r) &amp; Englisch</td></tr>
+            <tr><td>Tests</td><td>Vitest v4, Testing Library</td><td>Unit-Tests, 90 % Coverage-Threshold</td></tr>
+            <tr><td>CI/CD</td><td>GitHub Actions</td><td>Tests, Lint, Typecheck, Vercel Deploy</td></tr>
+            <tr><td>Hosting</td><td>Vercel (Frontend), Supabase EU-Frankfurt</td><td>DSGVO-konforme EU-Region</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="tech-crawler">6.2 Crawler-Mechanismus</h3>
+      <p>Das ZVG-Portal bietet keine offizielle API. Auktivo bezieht Daten &uuml;ber einen eigenen Python-Intervall-Crawler:</p>
+      <ul>
+        <li>L&auml;uft t&auml;glich (konfigurierbar &uuml;ber Admin-Panel)</li>
+        <li>Ruft alle Versteigerungstermine und Gutachten-Dokumente ab</li>
+        <li>Neue Eintr&auml;ge werden automatisch in Supabase gespeichert</li>
+        <li>Ge&auml;nderte oder stornierte Termine werden abgeglichen</li>
+        <li>Robuste Retry-Logik &ndash; die HTML-Struktur des ZVG-Portals ist seit Jahren konstant</li>
+        <li>Admin-Dashboard zeigt: letzter Lauf, Anzahl neuer Eintr&auml;ge, Fehlerprotokoll</li>
+      </ul>
+
+      <h3 id="tech-ocr">6.3 OCR-Pipeline</h3>
+      <p>Gutachten kommen als PDF oder TIF &ndash; oft gescannte Dokumente aus den 1990er bis 2020er Jahren:</p>
+      <ul>
+        <li>AWS Textract oder Google Document AI (konfigurierbar)</li>
+        <li>Erreicht &gt; 95 % Erkennungsgenauigkeit</li>
+        <li>Unleserliche Stellen werden dem Nutzer als solche markiert</li>
+        <li>OCR-Text wird gek&uuml;rzt auf max. 120.000 Zeichen f&uuml;r die KI-&Uuml;bergabe</li>
+      </ul>
+
+      <h3 id="tech-ai">6.4 KI-Analyse (AI MAX)</h3>
+      <p>Die KI-Komponente l&auml;uft &uuml;ber AI MAX, einen selbst gehosteten OpenAI-kompatiblen Endpunkt:</p>
+      <ul>
+        <li>Verbindung &uuml;ber <code>MAX_API_URL</code>, <code>MAX_API_KEY</code>, <code>MAX_MODEL</code> (Umgebungsvariablen)</li>
+        <li>Lazy-Initialisierung &uuml;ber <code>getMaxClient()</code> in <code>src/lib/ai/max.ts</code></li>
+        <li><strong>Risikoextraktion</strong>: strukturiertes JSON-Format, konservativer Bias (lieber zu viele Warnhinweise)</li>
+        <li><strong>Chat-Streaming</strong>: AsyncGenerator-Pattern, max. 20 Nachrichten Kontext-History</li>
+        <li>KI-Disclaimer bei jeder Ausgabe serverseitig erzwungen</li>
+      </ul>
+
+      <h3 id="tech-schema">6.5 Datenbank-Schema</h3>
+      <p>Supabase-Schema: <code>auktivo_dev</code> (Entwicklung) / <code>auktivo</code> (Produktion). Row Level Security (RLS) ist auf allen Tabellen aktiv.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tabelle</th><th>Inhalt</th><th>RLS</th></tr></thead>
+          <tbody>
+            <tr><td><code>profiles</code></td><td>Nutzerprofile, Plan (free/pro), Suchz&auml;hler</td><td>Nur eigener Datensatz</td></tr>
+            <tr><td><code>properties</code></td><td>Versteigerungsobjekte (Crawler-Import)</td><td>Lese-Zugriff f&uuml;r eingeloggte Nutzer</td></tr>
+            <tr><td><code>risk_signals</code></td><td>KI-Risikoauswertung je Objekt</td><td>Nur Pro-Nutzer</td></tr>
+            <tr><td><code>favorites</code></td><td>Gespeicherte Objekte je Nutzer</td><td>Nur eigene Favoriten</td></tr>
+            <tr><td><code>alerts</code></td><td>Suchalarm-Konfigurationen</td><td>Nur eigene Alarme</td></tr>
+            <tr><td><code>chat_messages</code></td><td>Chat-Historie je Objekt und Nutzer</td><td>Nur eigene Nachrichten</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── 7. CI/CD & Tests ──────────────────────────────────── -->
+    <section id="ci-cd">
+      <h2><span class="num">07</span> CI/CD &amp; Tests</h2>
+
+      <p>Jeder Code-Push durchl&auml;uft automatisch vier parallele Qualit&auml;ts-Gates. Ein Vercel-Deployment erfolgt nur bei Pull Requests (Preview) oder Merge in <code>main</code> (Produktion).</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Workflow</th><th>Trigger</th><th>Befehl</th></tr></thead>
+          <tbody>
+            <tr><td><code>unit-tests.yml</code></td><td>Push alle Branches</td><td><code>npm run test:coverage</code> (Vitest, 90 % Threshold)</td></tr>
+            <tr><td><code>validation-lint.yml</code></td><td>Push alle Branches</td><td><code>npm run lint</code> (ESLint)</td></tr>
+            <tr><td><code>validation-typecheck.yml</code></td><td>Push alle Branches</td><td><code>npm run typecheck</code> (tsc --noEmit)</td></tr>
+            <tr><td><code>validation-build.yml</code></td><td>Push alle Branches</td><td><code>npm run build</code> (Next.js)</td></tr>
+            <tr><td><code>deploy-preview.yml</code></td><td>Pull Request &rarr; main</td><td>Vercel Preview &ndash; URL als PR-Kommentar</td></tr>
+            <tr><td><code>deploy-production.yml</code></td><td>Push &rarr; main (Merge)</td><td>Vercel Production Deploy</td></tr>
+            <tr><td><code>docs.yml</code></td><td>Push &rarr; main (docs/)</td><td>GitHub Pages (dieses Handbuch)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">Keine Doppel-Ausf&uuml;hrung</div>
+        <p>Tests laufen &uuml;ber den <code>push</code>-Trigger, das Preview-Deployment &uuml;ber den <code>pull_request</code>-Trigger. Damit werden Workflows bei einem Push in einen offenen PR nicht doppelt ausgef&uuml;hrt.</p>
+      </div>
+
+      <h3>Test-Abdeckung (135 Tests, Mai 2026)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Modul</th><th>Tests</th><th>Coverage</th></tr></thead>
+          <tbody>
+            <tr><td><code>src/lib/utils/routes.ts</code></td><td>35</td><td class="yes">100 %</td></tr>
+            <tr><td><code>src/lib/utils/date.ts</code></td><td>16</td><td class="yes">100 %</td></tr>
+            <tr><td><code>src/lib/feature-gate.ts</code></td><td>19</td><td class="yes">93 %</td></tr>
+            <tr><td><code>src/lib/stripe.ts</code></td><td>11</td><td class="yes">100 %</td></tr>
+            <tr><td><code>src/lib/ai/max.ts</code></td><td>13</td><td class="yes">100 %</td></tr>
+            <tr><td><code>src/i18n/routing.ts</code></td><td>12</td><td class="yes">100 %</td></tr>
+            <tr><td><code>src/lib/types/database.ts</code></td><td>29</td><td class="yes">Typen gepr&uuml;ft</td></tr>
+            <tr><td><strong>Gesamt</strong></td><td><strong>135</strong></td><td class="yes"><strong>98,57 %</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── 8. DSGVO & Compliance ─────────────────────────────── -->
+    <section id="compliance">
+      <h2><span class="num">08</span> DSGVO &amp; Compliance</h2>
+
+      <p>Auktivo verarbeitet personenbezogene Daten ausschlie&szlig;lich in der EU (Supabase, Region Frankfurt). Alle Verarbeitungen sind nach DSGVO dokumentiert.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>DSGVO-Anforderung</th><th>Umsetzung</th></tr></thead>
+          <tbody>
+            <tr><td>Recht auf Auskunft (Art. 15)</td><td>Profil-Seite zeigt alle gespeicherten Daten</td></tr>
+            <tr><td>Recht auf L&ouml;schung (Art. 17)</td><td>Konto-L&ouml;schung im Profil, sofortige Datenlöschung inkl. Stripe-K&uuml;ndigung</td></tr>
+            <tr><td>Datenportabilit&auml;t (Art. 20)</td><td>Datenexport (JSON) im Profil</td></tr>
+            <tr><td>Cookie-Einwilligung</td><td>Cookie-Banner mit Opt-in bei erstem Besuch</td></tr>
+            <tr><td>Datensicherheit (Art. 32)</td><td>RLS auf allen Supabase-Tabellen, HTTPS, kein Client-seitiges Secret</td></tr>
+            <tr><td>Impressum &amp; Datenschutzerkl&auml;rung</td><td>Verf&uuml;gbar unter <code>/[locale]/impressum</code> und <code>/[locale]/datenschutz</code></td></tr>
+            <tr><td>AGB</td><td>Verf&uuml;gbar unter <code>/[locale]/agb</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info-box">
+        <div class="info-box-title">ZVG-Daten &amp; Urheberrecht</div>
+        <p>Gutachten werden zusammengefasst und analysiert, nicht kopiert oder unver&auml;ndert republiziert. ZVG-Daten sind amtliche &ouml;ffentliche Dokumente. Es bestehen keine bekannten Pr&auml;zedenzf&auml;lle gegen Aggregatoren.</p>
+      </div>
+    </section>
+
+    <!-- ── 9. Glossar ────────────────────────────────────────── -->
+    <section id="glossar">
+      <h2><span class="num">09</span> Glossar</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Begriff</th><th>Erkl&auml;rung</th></tr></thead>
+          <tbody>
+            <tr><td><strong>ZVG</strong></td><td>Zwangsversteigerungsgesetz; auch gebr&auml;uchlich f&uuml;r das staatliche Portal zvg-portal.de</td></tr>
+            <tr><td><strong>Gutachten</strong></td><td>Amtliches Wertgutachten eines Sachverst&auml;ndigen, ver&ouml;ffentlicht vom Amtsgericht als PDF oder TIF</td></tr>
+            <tr><td><strong>Verkehrswert</strong></td><td>Vom Gutachter gesch&auml;tzter Marktwert des Objekts zum Zeitpunkt der Versteigerung</td></tr>
+            <tr><td><strong>Baulast</strong></td><td>&Ouml;ffentlich-rechtliche Verpflichtung, die auf einem Grundst&uuml;ck lastet (z.&nbsp;B. Wegerecht, Bebauungsbeschr&auml;nkung)</td></tr>
+            <tr><td><strong>Grundbuch</strong></td><td>Amtliches Register aller Rechte und Belastungen eines Grundst&uuml;cks (Hypotheken, Dienstbarkeiten)</td></tr>
+            <tr><td><strong>OCR</strong></td><td>Optical Character Recognition &ndash; automatische Texterkennung aus Bilddokumenten (PDF / TIF)</td></tr>
+            <tr><td><strong>Feature-Gate</strong></td><td>Serverseitiger Mechanismus, der Pro-Funktionen f&uuml;r Free-Nutzer sperrt</td></tr>
+            <tr><td><strong>RLS</strong></td><td>Row Level Security &ndash; Datenbankebenen-Zugriffsschutz in Supabase/PostgreSQL</td></tr>
+            <tr><td><strong>CAC</strong></td><td>Customer Acquisition Cost &ndash; Kosten zur Gewinnung eines neuen Kunden</td></tr>
+            <tr><td><strong>SSR</strong></td><td>Server-Side Rendering &ndash; Seitenrendering auf dem Server (Next.js App Router Standard)</td></tr>
+            <tr><td><strong>AI MAX</strong></td><td>Selbst gehosteter OpenAI-kompatibler KI-Endpunkt von WAMOCON</td></tr>
+            <tr><td><strong>WAMOCON</strong></td><td>WAMOCON GmbH &ndash; Betreiber und Entwickler von Auktivo</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="page-footer">
+  <div>&copy; 2026 WAMOCON GmbH &ndash; Alle Rechte vorbehalten</div>
+  <div>Auktivo Produkthandbuch v1.0 &middot; Vertraulich &middot; Mai 2026</div>
+</footer>
+
+</body>
+</html>
