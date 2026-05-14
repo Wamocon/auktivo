@@ -1,14 +1,11 @@
 name: Docs - GitHub Pages
 
 # Veroeffentlicht das Produkthandbuch unter docs/ auf GitHub Pages
-# Lauft bei Push in main wenn Dateien in docs/ geaendert wurden,
-# oder kann manuell ausgeloest werden (workflow_dispatch).
+# Lauft bei jedem Push auf allen Branches sowie manuell.
 on:
   push:
     branches:
       - "**"
-    paths:
-      - "docs/**"
   workflow_dispatch:
     inputs:
       reason:
