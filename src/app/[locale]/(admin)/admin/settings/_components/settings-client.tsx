@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
 import {
   Shield,
   Clock,
@@ -61,23 +60,18 @@ function Toggle({
   label: string;
 }) {
   return (
-    <button
-      role="switch"
-      aria-checked={checked ? "true" : "false"}
-      aria-label={label}
-      title={label}
-      id={id}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
-        checked ? "bg-brand-600" : "bg-zinc-200 dark:bg-zinc-700"
-      }`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`}
+    <label htmlFor={id} title={label} className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer">
+      <input
+        type="checkbox"
+        id={id}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        aria-label={label}
+        className="peer sr-only"
       />
-    </button>
+      <div className="w-full rounded-full border-2 border-transparent bg-zinc-200 transition-colors peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500 peer-focus-visible:ring-offset-2 dark:bg-zinc-700" />
+      <span className="pointer-events-none absolute left-0 top-0.5 h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out peer-checked:translate-x-5" />
+    </label>
   );
 }
 
@@ -161,8 +155,7 @@ function SettingRow({
 }
 
 export function AdminSettingsClient({ initialSettings }: Props) {
-  const _t = useTranslations("admin");
-
+  // Translations used via prop drilling from server - add when needed
   // -- General settings --
   const [appName, setAppName] = useState(initialSettings.app_name);
   const [supportEmail, setSupportEmail] = useState(initialSettings.support_email);

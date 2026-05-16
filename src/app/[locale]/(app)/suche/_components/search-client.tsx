@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Search, Filter, Lock, Loader2, MapPin, Building2, Calendar, TrendingUp } from "lucide-react";
 import { RiskBadge } from "@/components/ui/risk-badge";
+import { PropertyModal } from "./property-modal";
 import { daysUntil } from "@/lib/utils/date";
 import type { Profile, PropertyWithAnalysis, RiskLevel, PropertyType } from "@/lib/types/database";
 
@@ -17,27 +18,38 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   house: "Haus",
   apartment: "Wohnung",
   commercial: "Gewerbe",
-  land: "Grundstueck",
+  land: "Grundstuck",
   other: "Sonstiges",
 };
 
-
-function PropertyCard({ property, locale }: { property: PropertyWithAnalysis; locale: string }) {
+function PropertyCard({
+  property,
+  onSelect,
+}: {
+  property: PropertyWithAnalysis;
+  onSelect: () => void;
+}) {
   const days = daysUntil(property.auction_date ?? null);
 
   return (
-    <Link
-      href={{ pathname: "/objekte/[id]", params: { id: property.id } }}
-      locale={locale}
-      className="group flex flex-col rounded-2xl bg-white shadow-sm shadow-zinc-950/5 ring-1 ring-zinc-950/5 transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-zinc-900 dark:ring-white/5 dark:hover:ring-white/10"
+    <button
+      type="button"
+      onClick={onSelect}
+      className="group flex w-full flex-col rounded-2xl bg-white text-left shadow-sm shadow-zinc-950/5 ring-1 ring-zinc-950/5 transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-zinc-900 dark:ring-white/5 dark:hover:ring-white/10"
     >
-      <div className={`h-1 w-full rounded-t-2xl ${
-        property.property_analyses?.risk_level === "critical" ? "bg-red-500" :
-        property.property_analyses?.risk_level === "high" ? "bg-orange-400" :
-        property.property_analyses?.risk_level === "medium" ? "bg-amber-400" :
-        property.property_analyses?.risk_level === "low" ? "bg-green-400" :
-        "bg-zinc-200 dark:bg-zinc-700"
-      }`} />
+      <div
+        className={`h-1 w-full rounded-t-2xl ${
+          property.property_analyses?.risk_level === "critical"
+            ? "bg-red-500"
+            : property.property_analyses?.risk_level === "high"
+              ? "bg-orange-400"
+              : property.property_analyses?.risk_level === "medium"
+                ? "bg-amber-400"
+                : property.property_analyses?.risk_level === "low"
+                  ? "bg-green-400"
+                  : "bg-zinc-200 dark:bg-zinc-700"
+        }`}
+      />
 
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -59,6 +71,13 @@ function PropertyCard({ property, locale }: { property: PropertyWithAnalysis; lo
           {property.city}, {property.zip_code} &middot; {property.court}
         </div>
 
+        {/* Kurzbeschreibung */}
+        {property.objekt_lage && (
+          <p className="mb-3 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
+            {property.objekt_lage}
+          </p>
+        )}
+
         <div className="mt-auto flex items-end justify-between gap-3">
           <div>
             <p className="text-xs font-medium text-zinc-400">Verkehrswert</p>
@@ -69,13 +88,15 @@ function PropertyCard({ property, locale }: { property: PropertyWithAnalysis; lo
             </p>
           </div>
           {days !== null && (
-            <div className={`rounded-lg px-2.5 py-1.5 text-center ${
-              days <= 7
-                ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-                : days <= 21
-                ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
-                : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-            }`}>
+            <div
+              className={`rounded-lg px-2.5 py-1.5 text-center ${
+                days <= 7
+                  ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                  : days <= 21
+                    ? "bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+              }`}
+            >
               <p className="flex items-center gap-1 text-[10px] font-medium">
                 <Calendar className="h-2.5 w-2.5" /> Termin in
               </p>
@@ -84,7 +105,7 @@ function PropertyCard({ property, locale }: { property: PropertyWithAnalysis; lo
           )}
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
 
@@ -100,6 +121,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
   const [searched, setSearched] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<PropertyWithAnalysis | null>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -281,10 +303,23 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {results.map((property) => (
-            <PropertyCard key={property.id} property={property} locale={locale} />
+            <PropertyCard
+              key={property.id}
+              property={property}
+              onSelect={() => setSelectedProperty(property)}
+            />
           ))}
         </div>
       </div>
+
+      {/* Property-Popup Modal */}
+      {selectedProperty && (
+        <PropertyModal
+          property={selectedProperty}
+          locale={locale}
+          onClose={() => setSelectedProperty(null)}
+        />
+      )}
     </div>
   );
 }

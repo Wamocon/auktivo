@@ -6,46 +6,56 @@ import type { CrawlerRunResult, ZvgEntry } from "./types";
 export { getCrawlerProgress };
 
 const RATE_LIMIT_MS = 2_000; // 2 Sekunden zwischen Bundeslaender-Requests
+const UPSERT_BATCH_SIZE = 50; // Eintraege pro Supabase-Batch-Request
+const BATCH_PAUSE_MS = 80;   // Event-Loop-Pause zwischen Batches
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function upsertProperty(
+/**
+ * Upserted mehrere Eintraege in einem einzigen Supabase-Request.
+ * Reduziert die Anzahl der Netzwerk-Roundtrips drastisch.
+ */
+async function upsertBatch(
   admin: ReturnType<typeof createAdminClient>,
-  entry: ZvgEntry
-): Promise<"inserted" | "skipped"> {
-  const { error } = await admin.from("properties").upsert(
-    {
-      zvg_id: entry.zvg_id,
-      court: entry.amtsgericht,
-      court_file_number: entry.aktenzeichen,
-      auction_date: entry.termin?.toISOString() ?? null,
-      property_type: entry.property_type,
-      address: entry.adresse,
-      city: entry.ort,
-      zip_code: entry.plz ?? "00000",
-      state: entry.state,
-      market_value: entry.verkehrswert_eur,
-      minimum_bid: entry.verkehrswert_eur
-        ? Math.round(entry.verkehrswert_eur * 0.5)
-        : null,
-      document_urls: entry.document_urls,
-      status: "active",
-      last_crawled_at: new Date().toISOString(),
-    },
-    {
-      onConflict: "zvg_id",
-      ignoreDuplicates: false, // Daten immer aktualisieren
-    }
-  );
+  entries: ZvgEntry[]
+): Promise<{ inserted: number; skipped: number }> {
+  const now = new Date().toISOString();
+  const rows = entries.map((entry) => ({
+    zvg_id: entry.zvg_id,
+    court: entry.amtsgericht,
+    court_file_number: entry.aktenzeichen,
+    auction_date: entry.termin?.toISOString() ?? null,
+    property_type: entry.property_type,
+    address: entry.adresse,
+    city: entry.ort,
+    zip_code: entry.plz ?? "00000",
+    state: entry.state,
+    land_abk: entry.land_abk,
+    objekt_lage: entry.objekt_lage,
+    market_value: entry.verkehrswert_eur,
+    minimum_bid: entry.verkehrswert_eur
+      ? Math.round(entry.verkehrswert_eur * 0.5)
+      : null,
+    document_urls: entry.document_urls,
+    status: "active",
+    last_crawled_at: now,
+  }));
+
+  const { error } = await admin
+    .from("properties")
+    .upsert(rows, { onConflict: "zvg_id", ignoreDuplicates: false });
 
   if (error) {
-    console.error(`[Crawler] Upsert-Fehler fuer ${entry.zvg_id}:`, error.message);
-    return "skipped";
+    console.error(
+      `[Crawler] Batch-Upsert-Fehler (${entries.length} Eintraege):`,
+      error.message
+    );
+    return { inserted: 0, skipped: entries.length };
   }
 
-  return "inserted";
+  return { inserted: entries.length, skipped: 0 };
 }
 
 async function updateCrawlerRun(
@@ -163,18 +173,32 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       console.log(`[Crawler] ${land.name}: ${entries.length} Objekte gefunden`);
       totalScraped += entries.length;
 
-      for (const entry of entries) {
-        const result = await upsertProperty(admin, entry);
-        if (result === "inserted") {
-          totalInserted++;
-        } else {
-          totalSkipped++;
+      // Batch-Upsert: je UPSERT_BATCH_SIZE Eintraege pro Supabase-Request.
+      // Zwischen Batches: Abort-Signal pruefen + kurze Pause fuer den Event-Loop.
+      let processedInLand = 0;
+      for (let i = 0; i < entries.length; i += UPSERT_BATCH_SIZE) {
+        // Abort-Signal auch innerhalb eines grossen Bundeslandes pruefen
+        if (getCrawlerProgress().controlSignal === "abort") {
+          console.log("[Crawler] Abbruch-Signal im Batch-Loop empfangen");
+          break;
         }
+
+        const batch = entries.slice(i, i + UPSERT_BATCH_SIZE);
+        const { inserted, skipped } = await upsertBatch(admin, batch);
+        totalInserted += inserted;
+        totalSkipped += skipped;
+        processedInLand += batch.length;
+
         setCrawlerProgress({
-          processedProperties: totalScraped,
+          processedProperties: (totalScraped - entries.length) + processedInLand,
           insertedProperties: totalInserted,
           errors: totalErrors,
         });
+
+        // Event-Loop freigeben, damit der Dev-Server auf andere Requests reagieren kann
+        if (i + UPSERT_BATCH_SIZE < entries.length) {
+          await sleep(BATCH_PAUSE_MS);
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

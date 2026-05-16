@@ -40,6 +40,8 @@ export interface Property {
   city: string | null;
   zip_code: string;
   state: string | null;
+  land_abk: string | null;
+  objekt_lage: string | null;
   lat: number | null;
   lng: number | null;
   market_value: number | null;

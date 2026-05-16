@@ -1,3 +1,5 @@
+"use client";
+
 import type { RiskLevel } from "@/lib/types/database";
 import { useTranslations } from "next-intl";
 

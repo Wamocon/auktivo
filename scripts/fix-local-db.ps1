@@ -26,7 +26,7 @@ Write-Host "`n[1/3] Schemas in DB umbenennen..." -ForegroundColor Yellow
 
 $psql = "psql"
 $dbUrl = "postgresql://postgres:postgres@127.0.0.1:54332/postgres" # notsecret - local dev only
-$sqlFile = Join-Path $PSScriptRoot "rename-schemas.sql"
+$sqlFile = Join-Path $PSScriptRoot "rename-schemas.psql"
 
 if (-not (Test-Path $sqlFile)) {
   Write-Error "Datei nicht gefunden: $sqlFile"

@@ -94,18 +94,29 @@ function detectPropertyType(objekt_lage: string): CrawlerPropertyType {
 }
 
 function parseVerkehrswert(raw: string): number | null {
-  // "385.000,00 €" oder "385.000" -> 385000
-  const cleaned = raw.replace(/[^\d.,]/g, "");
-  if (!cleaned) return null;
+  // Extrahiert die ERSTE gueltige deutsche Preis-Angabe aus dem String.
+  // Beispiele: "290.000 € Objekt 2: 328.000 €" -> 290000
+  //            "617.000,00 ä..."               -> 617000
+  //            "385.000,00 €"                  -> 385000
+  //            "385000"                        -> 385000
+
+  // Prioritaet: Tausender-Format (123.456) vor reinen Zahlen
+  const match =
+    /(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)|(\d+(?:,\d{1,2})?)/.exec(raw);
+  if (!match) return null;
+
+  const numStr = match[1] ?? match[2];
   // Deutsches Format: Punkt = Tausender, Komma = Dezimal
-  const normalized = cleaned.replace(/\./g, "").replace(",", ".");
+  const normalized = numStr.replace(/\./g, "").replace(",", ".");
   const value = parseFloat(normalized);
   if (isNaN(value)) return null;
+
   const rounded = Math.round(value);
-  // Sicherheits-Cap: max numeric(15,2) erlaubt 13 Stellen vor dem Komma
-  // Werte > 9 Billionen sind sicher Parsing-Fehler
-  if (rounded > 9_000_000_000_000) {
-    console.warn(`[Scraper] Unrealistischer Verkehrswert ignoriert: ${rounded} (raw: "${raw}")`);
+  // Cap: Werte > 100 Mrd. sind sicher Parsing-Fehler (kein Immobilien-Verkehrswert)
+  if (rounded > 100_000_000_000) {
+    console.warn(
+      `[Scraper] Parsing-Fehler Verkehrswert: ${rounded} (raw: "${raw.slice(0, 80)}")`
+    );
     return null;
   }
   return rounded;

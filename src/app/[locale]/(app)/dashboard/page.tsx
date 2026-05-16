@@ -31,6 +31,7 @@ export default async function DashboardPage({
         .from("properties")
         .select("id, city, zip_code, court, property_type, market_value, auction_date, status, property_analyses(risk_level, summary, analysis_status)")
         .eq("status", "active")
+        // eslint-disable-next-line react-hooks/purity
         .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order("auction_date", { ascending: true })
         .limit(6),

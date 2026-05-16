@@ -14,7 +14,8 @@ export default function ErrorPage({
   const t = useTranslations("errors");
 
   useEffect(() => {
-    console.error(error);
+    // Nur message + stack loggen, um React-interne Ref-Serialisierungsfehler zu vermeiden
+    console.error("[ErrorBoundary]", error?.message ?? String(error), error?.stack);
   }, [error]);
 
   return (

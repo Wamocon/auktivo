@@ -2,8 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { Crown, Shield, Building2, User } from "lucide-react";
-import { AdminUserActions } from "./_components/admin-user-actions";
+import { Crown } from "lucide-react";
 import { AdminUsersClient } from "./_components/admin-users-client";
 
 export default async function AdminUsersPage({

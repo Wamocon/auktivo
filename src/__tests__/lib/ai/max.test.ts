@@ -292,6 +292,7 @@ describe("chatWithProperty", () => {
       "OCR Inhalt",
       "KI-Zusammenfassung"
     );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _ of generator) { /* consume */ }
 
     const callArgs = mockCompletionsCreate.mock.calls[0][0];

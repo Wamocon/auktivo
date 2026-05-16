@@ -1,6 +1,15 @@
 {
   "files.associations": {
-    "**/scripts/rename-schemas.sql": "plaintext",
-    "**/supabase/setup_all_schemas.sql": "plaintext"
-  }
+    "**/supabase/setup_all_schemas.sql": "plaintext",
+    "**/supabase/migrations/*.sql": "plaintext",
+    "**/supabase/seed.sql": "plaintext",
+    "**/scripts/*.sql": "plaintext",
+    "**/scripts/*.psql": "plaintext"
+  },
+  "mssql.intelliSense.enableIntelliSense": false,
+  "github-actions.org-secrets": [
+    "VERCEL_TOKEN",
+    "VERCEL_ORG_ID",
+    "VERCEL_PROJECT_ID"
+  ]
 }
