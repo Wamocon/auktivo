@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LayoutDashboard, Users, CreditCard, Database, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -12,16 +13,9 @@ const NAV_ITEMS = [
   { key: "settings", icon: Settings, labelKey: "nav_settings" },
 ] as const;
 
-const LABELS: Record<string, string> = {
-  nav_dashboard: "Übersicht",
-  nav_users: "Nutzerverwaltung",
-  nav_subscriptions: "Abonnierung",
-  nav_crawler: "Crawler & Daten",
-  nav_settings: "App-Einstellungen",
-};
-
 export function AdminNavLinks({ locale }: { locale: string }) {
   const pathname = usePathname();
+  const t = useTranslations("admin");
 
   return (
     <>
@@ -39,7 +33,7 @@ export function AdminNavLinks({ locale }: { locale: string }) {
             }`}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {LABELS[labelKey]}
+            {t(labelKey)}
           </Link>
         );
       })}

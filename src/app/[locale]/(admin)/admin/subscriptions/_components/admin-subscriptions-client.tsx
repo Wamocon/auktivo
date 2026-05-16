@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { Loader2, ExternalLink, Crown, XCircle, CheckCircle2, MoreVertical } from "lucide-react";
+import { PortalMenu } from "@/components/ui/portal-menu";
 
 interface SubRow {
   id: string;
@@ -23,16 +25,30 @@ interface Props {
 function SubActions({ sub }: { sub: SubRow }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
+  const openMenu = useCallback(() => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + window.scrollY + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(true);
+  }, []);
+
   useEffect(() => {
+    if (!open) return;
     function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (btnRef.current && !btnRef.current.contains(target)) setOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [open]);
 
   async function doAction(action: string) {
     setLoading(true);
@@ -54,13 +70,45 @@ function SubActions({ sub }: { sub: SubRow }) {
     }
   }
 
+  const menu = open ? createPortal(
+    <PortalMenu top={menuPos.top} right={menuPos.right} onClose={() => setOpen(false)}>
+      {sub.stripe_customer_id && (
+        <a
+          href={`https://dashboard.stripe.com/customers/${sub.stripe_customer_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          <ExternalLink className="h-4 w-4 text-zinc-500" /> Stripe-Dashboard
+        </a>
+      )}
+      {sub.subscription_status !== "active" && (
+        <button
+          onClick={() => doAction("activate")}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+        >
+          <CheckCircle2 className="h-4 w-4 text-green-500" /> Abo aktivieren
+        </button>
+      )}
+      <hr className="my-1 border-zinc-100 dark:border-zinc-800" />
+      <button
+        onClick={() => { if (confirm("Abonnement wirklich kündigen? Der Nutzer wird auf Free zurückgesetzt.")) doAction("cancel"); }}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+      >
+        <XCircle className="h-4 w-4" /> Abo kündigen
+      </button>
+    </PortalMenu>,
+    document.body
+  ) : null;
+
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="flex items-center justify-center">
       {loading
         ? <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
         : (
           <button
-            onClick={() => setOpen((v) => !v)}
+            ref={btnRef}
+            onClick={openMenu}
             aria-label="Weitere Aktionen"
             className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800"
           >
@@ -68,35 +116,7 @@ function SubActions({ sub }: { sub: SubRow }) {
           </button>
         )
       }
-      {open && (
-        <div className="absolute right-0 top-8 z-20 min-w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          {sub.stripe_customer_id && (
-            <a
-              href={`https://dashboard.stripe.com/customers/${sub.stripe_customer_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-            >
-              <ExternalLink className="h-4 w-4 text-zinc-500" /> Stripe-Dashboard
-            </a>
-          )}
-          {sub.subscription_status !== "active" && (
-            <button
-              onClick={() => doAction("activate")}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
-            >
-              <CheckCircle2 className="h-4 w-4 text-green-500" /> Abo aktivieren
-            </button>
-          )}
-          <hr className="my-1 border-zinc-100 dark:border-zinc-800" />
-          <button
-            onClick={() => { if (confirm("Abonnement wirklich kündigen? Der Nutzer wird auf Free zurückgesetzt.")) doAction("cancel"); }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-          >
-            <XCircle className="h-4 w-4" /> Abo kündigen
-          </button>
-        </div>
-      )}
+      {menu}
     </div>
   );
 }

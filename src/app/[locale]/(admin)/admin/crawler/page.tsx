@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Database, RefreshCw, CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
 import { CrawlerProgressPanel } from "./_components/crawler-progress-panel";
+import { MarkFailedButton } from "./_components/mark-failed-button";
 
 export default async function AdminCrawlerPage({
   params,
@@ -102,6 +103,7 @@ export default async function AdminCrawlerPage({
                           <Icon className={`h-3.5 w-3.5 ${run.status === "running" ? "animate-spin" : ""}`} />
                           {run.status === "completed" ? t("run_status_completed") : run.status === "failed" ? t("run_status_failed") : t("run_status_running")}
                         </span>
+                        {run.status === "running" && <MarkFailedButton runId={run.id} />}
                       </td>
                       <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
                         {run.new_properties_count ?? "-"}

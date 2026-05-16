@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   Loader2, Shield, ShieldOff, Crown, TrendingDown,
   MoreVertical, Trash2, PenLine, Building2, User, RotateCcw,
 } from "lucide-react";
+import { PortalMenu } from "@/components/ui/portal-menu";
 
 interface AdminUserActionsProps {
   userId: string;
@@ -23,19 +25,31 @@ export function AdminUserActions({
   const [open, setOpen] = useState(false);
   const [nameInput, setNameInput] = useState(fullName ?? "");
   const [showNameModal, setShowNameModal] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const router = useRouter();
   const isSelf = userId === currentUserId;
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+
+  const openMenu = useCallback(() => {
+    if (menuBtnRef.current) {
+      const rect = menuBtnRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + window.scrollY + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(true);
+  }, []);
 
   useEffect(() => {
+    if (!open) return;
     function handler(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (menuBtnRef.current && !menuBtnRef.current.contains(target)) setOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [open]);
 
   async function handleAction(action: string, value?: string) {
     setLoading(true);
@@ -70,7 +84,7 @@ export function AdminUserActions({
 
   return (
     <>
-      <div className="relative flex items-center gap-1" ref={menuRef}>
+      <div className="relative flex items-center gap-1">
         {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" />}
 
         {/* Plan quick-toggle */}
@@ -85,7 +99,8 @@ export function AdminUserActions({
 
         {/* More actions dropdown */}
         <button
-          onClick={() => setOpen((v) => !v)}
+          ref={menuBtnRef}
+          onClick={openMenu}
           disabled={loading}
           title="Weitere Aktionen"
           className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-40 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
@@ -93,8 +108,8 @@ export function AdminUserActions({
           <MoreVertical className="h-4 w-4" />
         </button>
 
-        {open && (
-          <div className="absolute right-0 top-8 z-20 min-w-48 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+        {open && createPortal(
+          <PortalMenu top={menuPos.top} right={menuPos.right} minWidth="13rem" onClose={() => setOpen(false)}>
             {/* Admin toggle */}
             {!isSelf && (
               <button
@@ -145,7 +160,8 @@ export function AdminUserActions({
                 </button>
               </>
             )}
-          </div>
+          </PortalMenu>,
+          document.body
         )}
       </div>
 
