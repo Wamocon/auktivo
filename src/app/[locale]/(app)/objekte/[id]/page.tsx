@@ -6,7 +6,8 @@ import { PropertyTabs } from "./_components/property-tabs";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { ExternalLink, Heart, MessageSquare, AlertTriangle } from "lucide-react";
+import { ExternalLink, Heart, MessageSquare, AlertTriangle, Calendar } from "lucide-react";
+import { ChatFloatButton } from "./_components/chat-float-button";
 import type { Property, PropertyAnalysis, PropertyDocument } from "@/lib/types/database";
 
 export default async function PropertyDetailPage({
@@ -37,6 +38,14 @@ export default async function PropertyDetailPage({
   const p = property as Property;
   const a = analysis as PropertyAnalysis | null;
   const docs = (documents ?? []) as PropertyDocument[];
+
+  // ZVG-Objekt-URL aus zvg_id aufbauen
+  const zvgParts = (p.zvg_id ?? "").split("-");
+  const zvgLand = (zvgParts[0] ?? p.land_abk ?? "").toLowerCase();
+  const zvgNumId = zvgParts[1] ?? "";
+  const zvgDirectUrl = zvgNumId && zvgLand
+    ? `https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=${zvgNumId}&land_abk=${zvgLand}`
+    : "https://www.zvg-portal.de";
 
   const minBid = p.minimum_bid ?? (p.market_value ? Math.round(p.market_value * 0.5) : null);
   const discount =
@@ -85,11 +94,53 @@ export default async function PropertyDetailPage({
             </p>
             <p className="text-xs text-zinc-400">
               {p.court}
-              {p.court_file_number ? ` &middot; Az. ${p.court_file_number}` : ""}
-              {p.auction_date
-                ? ` &middot; Termin: ${new Date(p.auction_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
-                : ""}
+              {p.court_file_number ? ` \u00b7 Az. ${p.court_file_number}` : ""}
             </p>
+
+            {/* Versteigerungstermin - gross und prominent */}
+            {p.auction_date && (() => {
+              const aDate = new Date(p.auction_date);
+              const now = new Date();
+              const diffDays = Math.ceil((aDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isPast = diffDays < 0;
+              const isUrgent = diffDays >= 0 && diffDays <= 14;
+              return (
+                <div className={`mt-4 flex items-center gap-4 rounded-xl px-5 py-4 ${
+                  isPast
+                    ? "bg-zinc-100 dark:bg-zinc-800"
+                    : isUrgent
+                      ? "bg-red-50 dark:bg-red-900/20"
+                      : "bg-blue-50 dark:bg-blue-900/20"
+                }`}>
+                  <Calendar className={`h-8 w-8 shrink-0 ${
+                    isPast ? "text-zinc-400" : isUrgent ? "text-red-500" : "text-blue-500"
+                  }`} />
+                  <div>
+                    <p className={`text-[11px] font-semibold uppercase tracking-widest ${
+                      isPast ? "text-zinc-400" : isUrgent ? "text-red-500" : "text-blue-500"
+                    }`}>
+                      Versteigerungstermin
+                    </p>
+                    <p className={`text-xl font-black ${
+                      isPast ? "text-zinc-500" : "text-zinc-900 dark:text-zinc-50"
+                    }`}>
+                      {aDate.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                    </p>
+                    <p className={`text-sm font-semibold ${
+                      isPast ? "text-zinc-400" : isUrgent ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"
+                    }`}>
+                      {aDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr
+                      {!isPast && (
+                        <span className="ml-3 text-xs">
+                          {diffDays === 0 ? "Heute!" : diffDays === 1 ? "Morgen!" : `in ${diffDays} Tagen`}
+                        </span>
+                      )}
+                      {isPast && <span className="ml-3 text-xs">(abgelaufen)</span>}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Werte-Leiste */}
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -119,16 +170,10 @@ export default async function PropertyDetailPage({
                   )}
                 </div>
               )}
-              {p.auction_date && (
-                <div className="rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800">
-                  <p className="mb-0.5 text-xs text-zinc-500">{t("auction_date")}</p>
-                  <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
-                    {new Date(p.auction_date).toLocaleDateString("de-DE", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })}
-                  </p>
+              {p.versteigerungsort && (
+                <div className="col-span-2 rounded-xl bg-zinc-50 p-3 dark:bg-zinc-800 sm:col-span-3">
+                  <p className="mb-0.5 text-xs text-zinc-500">Ort der Versteigerung</p>
+                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{p.versteigerungsort}</p>
                 </div>
               )}
             </div>
@@ -150,7 +195,7 @@ export default async function PropertyDetailPage({
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex flex-col gap-3">
               <a
-                href="https://www.zvg-portal.de"
+                href={zvgDirectUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 rounded-full bg-zinc-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
@@ -220,6 +265,9 @@ export default async function PropertyDetailPage({
           <AiDisclaimer variant="short" />
         </div>
       </div>
+
+      {/* Floating Justizia-Chat-Button */}
+      <ChatFloatButton propertyId={id} locale={locale} isPro={isPro} />
     </div>
   );
 }

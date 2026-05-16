@@ -122,11 +122,15 @@ export function LocationTab({ propertyId, address, city, zipCode, lat, lon }: Lo
 
   const mapEmbedUrl = hasCoords
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${mapLon! - 0.012},${mapLat! - 0.008},${mapLon! + 0.012},${mapLat! + 0.008}&layer=mapnik&marker=${mapLat},${mapLon}`
-    : null;
+    : `https://www.openstreetmap.org/export/embed.html?query=${encodeURIComponent(`${zipCode} ${city ?? ""}`)}`;
 
   const mapLink = hasCoords
     ? `https://www.openstreetmap.org/?mlat=${mapLat}&mlon=${mapLon}&zoom=16`
     : `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${address ?? ""} ${zipCode} ${city ?? ""}`)}`;
+
+  const mapLabel = hasCoords
+    ? `${address ? address + ", " : ""}${zipCode} ${city ?? ""}`
+    : `${zipCode} ${city ?? ""}`;
 
   return (
     <div className="space-y-5">
@@ -142,10 +146,14 @@ export function LocationTab({ propertyId, address, city, zipCode, lat, lon }: Lo
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
           >
-            <ExternalLink className="h-3 w-3" /> Vollbild
+            <ExternalLink className="h-3 w-3" /> {mapLabel}
           </a>
         </div>
-        {mapEmbedUrl ? (
+        {loading ? (
+          <div className="flex h-40 items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+            <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+          </div>
+        ) : (
           <iframe
             src={mapEmbedUrl}
             className="h-64 w-full border-0"
@@ -153,9 +161,10 @@ export function LocationTab({ propertyId, address, city, zipCode, lat, lon }: Lo
             loading="lazy"
             allowFullScreen
           />
-        ) : (
-          <div className="flex h-40 items-center justify-center bg-zinc-100 dark:bg-zinc-800">
-            <p className="text-sm text-zinc-400">Koordinaten werden ermittelt...</p>
+        )}
+        {!loading && !hasCoords && (
+          <div className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700 dark:border-amber-900/30 dark:bg-amber-900/10 dark:text-amber-400">
+            Exakter Standort nicht verfugbar - Kartenausschnitt zeigt den Postleitzahlen-Bereich
           </div>
         )}
         <div className="border-t border-zinc-100 bg-zinc-50 px-4 py-2 text-xs text-zinc-400 dark:border-zinc-800 dark:bg-zinc-800/30">

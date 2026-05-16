@@ -1,13 +1,26 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BUNDESLAENDER, scrapeZvgLand } from "./scraper";
+import { scrapeZvgLand, scrapeZvgDetail } from "./scraper";
+import { BUNDESLAENDER } from "@/lib/utils/bundeslaender";
 import { getCrawlerProgress, setCrawlerProgress, resetCrawlerProgress, sendControlSignal } from "./state";
 import type { CrawlerRunResult, ZvgEntry } from "./types";
 
 export { getCrawlerProgress };
 
-const RATE_LIMIT_MS = 2_000; // 2 Sekunden zwischen Bundeslaender-Requests
-const UPSERT_BATCH_SIZE = 50; // Eintraege pro Supabase-Batch-Request
-const BATCH_PAUSE_MS = 80;   // Event-Loop-Pause zwischen Batches
+const RATE_LIMIT_MS = 2_000;    // 2 Sekunden zwischen Bundeslaender-Requests
+const UPSERT_BATCH_SIZE = 50;   // Eintraege pro Supabase-Batch-Request
+const BATCH_PAUSE_MS = 300;     // Pause zwischen Batch-Upserts (300ms - gibt Event-Loop mehr Raum)
+const DETAIL_CONCURRENCY = 5;   // Parallele Detail-Page-Requests
+const DETAIL_PAUSE_MS = 200;    // Pause zwischen Detail-Batches
+const DETAIL_MAX_MINUTES = 4;   // Max. Minuten fuer Detail-Enrichment pro Bundesland
+
+/**
+ * Gibt den Event-Loop frei. Wichtig: Der Crawler laeuft auf demselben Node.js-Thread
+ * wie der Next.js-Server. Ohne setImmediate-Yields koennen andere HTTP-Requests
+ * warten bis der Crawler fertig ist (schlechte UX).
+ */
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -76,6 +89,82 @@ async function updateCrawlerRun(
           : null,
     })
     .eq("id", runId);
+}
+
+/**
+ * Holt Detail-Daten (Dokumente, Grundbuch, Beschreibung, etc.) fuer alle
+ * Eintraege eines Bundeslandes. Laeuft parallel mit max. DETAIL_CONCURRENCY
+ * gleichzeitigen Requests, um das ZVG-Portal nicht zu ueberlasten.
+ * Bricht ab nach DETAIL_MAX_MINUTES oder bei Abort-Signal.
+ */
+async function enrichWithDetails(
+  admin: ReturnType<typeof createAdminClient>,
+  entries: ZvgEntry[]
+): Promise<void> {
+  console.log(`[Crawler] Starte Detail-Enrichment fuer ${entries.length} Eintraege...`);
+  const deadline = Date.now() + DETAIL_MAX_MINUTES * 60 * 1_000;
+
+  for (let i = 0; i < entries.length; i += DETAIL_CONCURRENCY) {
+    // Zeitlimit und Abort-Signal pruefen
+    if (getCrawlerProgress().controlSignal === "abort") break;
+    if (Date.now() > deadline) {
+      console.warn(
+        `[Crawler] Detail-Enrichment nach ${DETAIL_MAX_MINUTES} Min. abgebrochen ` +
+        `(${i}/${entries.length} verarbeitet)`
+      );
+      break;
+    }
+
+    const batch = entries.slice(i, i + DETAIL_CONCURRENCY);
+
+    await Promise.all(
+      batch.map(async (entry) => {
+        try {
+          const detail = await scrapeZvgDetail(entry.zvg_id_numeric, entry.land_abk);
+          await admin
+            .from("properties")
+            .update({
+              art_versteigerung: detail.art_versteigerung,
+              grundbuch: detail.grundbuch,
+              beschreibung: detail.beschreibung,
+              versteigerungsort: detail.versteigerungsort,
+              glaeubigerinfo: detail.glaeubigerinfo,
+              geoserver_url: detail.geoserver_url,
+              document_urls: detail.document_urls,
+            })
+            .eq("zvg_id", entry.zvg_id);
+
+          // Dokument-URLs als ausstehende OCR-Jobs registrieren
+          if (detail.document_urls.length > 0) {
+            const { data: prop } = await admin
+              .from("properties")
+              .select("id")
+              .eq("zvg_id", entry.zvg_id)
+              .single();
+            if (prop?.id) {
+              await admin.from("property_documents").upsert(
+                detail.document_urls.map((url) => ({
+                  property_id: prop.id,
+                  original_url: url,
+                  ocr_status: "pending" as const,
+                })),
+                { onConflict: "property_id,original_url", ignoreDuplicates: true }
+              );
+            }
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[Crawler] Detail-Fehler ${entry.zvg_id}:`, msg);
+        }
+      })
+    );
+
+    if (i + DETAIL_CONCURRENCY < entries.length) {
+      await sleep(DETAIL_PAUSE_MS);
+    }
+  }
+
+  console.log(`[Crawler] Detail-Enrichment abgeschlossen`);
 }
 
 /**
@@ -173,8 +262,7 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       console.log(`[Crawler] ${land.name}: ${entries.length} Objekte gefunden`);
       totalScraped += entries.length;
 
-      // Batch-Upsert: je UPSERT_BATCH_SIZE Eintraege pro Supabase-Request.
-      // Zwischen Batches: Abort-Signal pruefen + kurze Pause fuer den Event-Loop.
+      // Phase 1: Batch-Upsert der Listendaten
       let processedInLand = 0;
       for (let i = 0; i < entries.length; i += UPSERT_BATCH_SIZE) {
         // Abort-Signal auch innerhalb eines grossen Bundeslandes pruefen
@@ -195,10 +283,17 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
           errors: totalErrors,
         });
 
-        // Event-Loop freigeben, damit der Dev-Server auf andere Requests reagieren kann
+        // Event-Loop und Pause: gibt Next.js-Server Zeit fuer andere Requests
+        await yieldToEventLoop();
         if (i + UPSERT_BATCH_SIZE < entries.length) {
           await sleep(BATCH_PAUSE_MS);
         }
+      }
+
+      // Phase 2: Detail-Enrichment (Dokumente, Grundbuch, Beschreibung, etc.)
+      // Nur starten wenn kein Abort-Signal
+      if (getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
+        await enrichWithDetails(admin, entries);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

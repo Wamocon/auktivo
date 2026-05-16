@@ -237,20 +237,55 @@ export async function enrichPropertyLocation(params: {
   let neighborhood: string | null = null;
   let county: string | null = null;
 
-  // Geocoding nur wenn keine Koordinaten vorhanden
+  // Geocoding nur wenn keine Koordinaten vorhanden - mehrstufiger Fallback
   if (!finalLat || !finalLon) {
-    const query = [address, zipCode, city, "Deutschland"].filter(Boolean).join(", ");
-    const geo = await fetchNominatim(query);
-    if (geo) {
-      finalLat = parseFloat(geo.lat);
-      finalLon = parseFloat(geo.lon);
-      displayName = geo.display_name;
-      neighborhood =
-        geo.address.suburb ??
-        geo.address.quarter ??
-        geo.address.village ??
-        null;
-      county = geo.address.county ?? null;
+    // Stufe 1: Volle Adresse (Strasse + PLZ + Stadt)
+    if (address && zipCode && city) {
+      const query = `${address}, ${zipCode} ${city}, Deutschland`;
+      const geo = await fetchNominatim(query);
+      if (geo) {
+        finalLat = parseFloat(geo.lat);
+        finalLon = parseFloat(geo.lon);
+        displayName = geo.display_name;
+        neighborhood = geo.address.suburb ?? geo.address.quarter ?? geo.address.village ?? null;
+        county = geo.address.county ?? null;
+      }
+    }
+
+    // Stufe 2: PLZ + Stadt (ohne Strasse)
+    if (!finalLat && zipCode && city) {
+      const geo = await fetchNominatim(`${zipCode} ${city}, Deutschland`);
+      if (geo) {
+        finalLat = parseFloat(geo.lat);
+        finalLon = parseFloat(geo.lon);
+        displayName = geo.display_name;
+        neighborhood = null;
+        county = geo.address.county ?? null;
+      }
+    }
+
+    // Stufe 3: Nur PLZ
+    if (!finalLat && zipCode) {
+      const geo = await fetchNominatim(`${zipCode}, Deutschland`);
+      if (geo) {
+        finalLat = parseFloat(geo.lat);
+        finalLon = parseFloat(geo.lon);
+        displayName = geo.display_name;
+        neighborhood = null;
+        county = geo.address.county ?? null;
+      }
+    }
+
+    // Stufe 4: Nur Stadt
+    if (!finalLat && city) {
+      const geo = await fetchNominatim(`${city}, Deutschland`);
+      if (geo) {
+        finalLat = parseFloat(geo.lat);
+        finalLon = parseFloat(geo.lon);
+        displayName = geo.display_name;
+        neighborhood = null;
+        county = geo.address.county ?? null;
+      }
     }
   }
 

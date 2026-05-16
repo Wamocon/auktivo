@@ -19,7 +19,10 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const zip = searchParams.get("zip");
+  const bundesland = searchParams.get("bundesland");
   const types = searchParams.get("types")?.split(",").filter(Boolean) ?? [];
+  const budgetMin = searchParams.get("budget_min") ? Number(searchParams.get("budget_min")) : null;
+  const budgetMax = searchParams.get("budget_max") ? Number(searchParams.get("budget_max")) : null;
 
   let query = supabase
     .from("properties")
@@ -30,12 +33,23 @@ export async function GET(request: Request) {
 
   if (zip) {
     // PLZ-basierte Filterung (einfache Prefix-Suche)
-    // Fuer Produktionseinsatz: PostGIS-basierte Umkreissuche implementieren
     query = query.like("zip_code", `${zip.slice(0, 3)}%`);
+  }
+
+  if (bundesland) {
+    query = query.eq("land_abk", bundesland);
   }
 
   if (types.length > 0) {
     query = query.in("property_type", types);
+  }
+
+  if (budgetMin !== null) {
+    query = query.gte("minimum_bid", budgetMin);
+  }
+
+  if (budgetMax !== null) {
+    query = query.lte("minimum_bid", budgetMax);
   }
 
   const { data, error } = await query;

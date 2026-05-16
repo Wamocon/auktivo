@@ -19,6 +19,7 @@ export const routing = defineRouting({
     "/objekte/[id]/chat": { de: "/objekte/[id]/chat", en: "/properties/[id]/chat" },
     "/favoriten": { de: "/favoriten", en: "/favorites" },
     "/alarme": { de: "/alarme", en: "/alerts" },
+    "/empfehlungen": { de: "/empfehlungen", en: "/recommendations" },
     "/profil": { de: "/profil", en: "/profile" },
     "/upgrade": "/upgrade",
   },

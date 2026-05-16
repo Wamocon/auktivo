@@ -8,6 +8,9 @@ import {
   MapPin,
   ExternalLink,
   AlertTriangle,
+  Loader2,
+  PlayCircle,
+  RefreshCw,
 } from "lucide-react";
 import type { Property, PropertyAnalysis, PropertyDocument } from "@/lib/types/database";
 import { AiDisclaimer } from "@/components/ui/ai-disclaimer";
@@ -45,6 +48,26 @@ const BUNDESLAENDER: Record<string, string> = {
 
 export function PropertyTabs({ property: p, analysis: a, documents, isPro, locale }: PropertyTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [triggering, setTriggering] = useState(false);
+  const [triggerMsg, setTriggerMsg] = useState<string | null>(null);
+
+  async function triggerAnalysis() {
+    setTriggering(true);
+    setTriggerMsg(null);
+    try {
+      const res = await fetch(`/api/ai/analyze/${p.id}`, { method: "POST" });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setTriggerMsg(data.error ?? `Fehler ${res.status}`);
+      } else {
+        setTriggerMsg("Analyse wurde gestartet. Seite bitte nach ca. 2 Minuten neu laden.");
+      }
+    } catch {
+      setTriggerMsg("Verbindungsfehler. Bitte erneut versuchen.");
+    } finally {
+      setTriggering(false);
+    }
+  }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "overview", label: "Ubersicht", icon: <Info className="h-4 w-4" /> },
@@ -100,9 +123,11 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
             <h3 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-50">Objektdaten</h3>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
               <DataRow label="Objektart" value={formatType(p.property_type)} />
+              {p.art_versteigerung && <DataRow label="Art der Versteigerung" value={p.art_versteigerung} />}
               <DataRow label="Amtsgericht" value={p.court} />
               {p.court_file_number && <DataRow label="Aktenzeichen" value={p.court_file_number} mono />}
               {p.zvg_id && <DataRow label="ZVG-ID" value={p.zvg_id} mono />}
+              {p.grundbuch && <DataRow label="Grundbuch" value={p.grundbuch} />}
               {p.state && <DataRow label="Bundesland" value={p.state} />}
               {p.land_abk && BUNDESLAENDER[p.land_abk] && (
                 <DataRow label="Bundesland (Abk.)" value={p.land_abk.toUpperCase()} mono />
@@ -110,6 +135,8 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               {p.zip_code && <DataRow label="PLZ" value={p.zip_code} mono />}
               {p.city && <DataRow label="Ort" value={p.city} />}
               {p.address && <DataRow label="Adresse" value={p.address} />}
+              {p.versteigerungsort && <DataRow label="Ort der Versteigerung" value={p.versteigerungsort} />}
+              {p.glaeubigerinfo && <DataRow label="Informationen zum Glaeubiger" value={p.glaeubigerinfo} />}
               {p.auction_date && (
                 <DataRow
                   label="Versteigerungstermin"
@@ -131,6 +158,19 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                 />
               )}
             </dl>
+            {/* GeoServer-Link */}
+            {p.geoserver_url && (
+              <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                <a
+                  href={p.geoserver_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                >
+                  <MapPin className="h-4 w-4" /> Karten & Luftbilder (GeoServer)
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Wertangaben */}
@@ -187,21 +227,34 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
       {/* Tab: Beschreibung */}
       {activeTab === "description" && (
         <div className="space-y-4">
+          {/* Ausfuehrliche Beschreibung (Detail-Seite) */}
+          {p.beschreibung && (
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+              <h3 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                Beschreibung (ZVG-Portal)
+              </h3>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                {p.beschreibung}
+              </p>
+            </div>
+          )}
           {p.objekt_lage ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
               <h3 className="mb-3 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                Objektbeschreibung (ZVG-Portal)
+                Objekt/Lage (ZVG-Portal)
               </h3>
               <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                 {p.objekt_lage}
               </p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500">
-                Keine erweiterte Beschreibung verfugbar. Die vollstandigen Angaben finden Sie auf dem ZVG-Portal.
-              </p>
-            </div>
+            !p.beschreibung && (
+              <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                <p className="text-sm text-zinc-500">
+                  Keine erweiterte Beschreibung verfugbar. Die vollstandigen Angaben finden Sie auf dem ZVG-Portal.
+                </p>
+              </div>
+            )
           )}
 
           {/* Adressblock */}
@@ -297,19 +350,25 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
             </div>
           ) : p.document_urls.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {p.document_urls.map((url, i) => (
-                <a
-                  key={i}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50"
-                >
-                  <FileText className="h-4 w-4 text-zinc-400" />
-                  <span className="flex-1 text-zinc-700 dark:text-zinc-300">Dokument {i + 1}</span>
-                  <ExternalLink className="h-3.5 w-3.5 text-zinc-400" />
-                </a>
-              ))}
+              {p.document_urls.map((url, i) => {
+                // Dateiname aus URL extrahieren
+                const raw = url.split("?")[0] ?? url;
+                const fileName = decodeURIComponent(raw.split("/").pop() ?? `Dokument ${i + 1}`);
+                const isPdf = url.toLowerCase().includes(".pdf") || fileName.toLowerCase().includes(".pdf");
+                return (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50"
+                  >
+                    <FileText className={`h-4 w-4 shrink-0 ${isPdf ? "text-red-500" : "text-zinc-400"}`} />
+                    <span className="flex-1 truncate text-zinc-700 dark:text-zinc-300">{fileName}</span>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                  </a>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-zinc-500">
@@ -342,11 +401,57 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
             </div>
           ) : !a ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500">Analyse wird erstellt...</p>
+              <div className="flex flex-col items-center gap-4 py-8 text-center">
+                <BrainCircuit className="h-12 w-12 text-zinc-300" />
+                <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  Noch keine KI-Analyse vorhanden
+                </p>
+                <p className="max-w-sm text-sm text-zinc-500">
+                  Starte die Analyse manuell. Die KI wertet verfugbare Dokumente und Objektdaten aus.
+                </p>
+                {triggerMsg ? (
+                  <p className="max-w-sm rounded-xl bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                    {triggerMsg}
+                  </p>
+                ) : (
+                  <button
+                    onClick={triggerAnalysis}
+                    disabled={triggering}
+                    className="flex items-center gap-2 rounded-full bg-brand-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+                  >
+                    {triggering ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Wird analysiert...</>
+                    ) : (
+                      <><PlayCircle className="h-4 w-4" /> Analyse starten</>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           ) : a.analysis_status === "failed" ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-red-600 dark:text-red-400">Analyse fehlgeschlagen: {a.error_message}</p>
+              <div className="mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <p className="text-sm font-semibold text-red-600 dark:text-red-400">Analyse fehlgeschlagen</p>
+              </div>
+              <p className="mb-4 text-sm text-zinc-500">{a.error_message}</p>
+              {triggerMsg ? (
+                <p className="rounded-xl bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  {triggerMsg}
+                </p>
+              ) : (
+                <button
+                  onClick={triggerAnalysis}
+                  disabled={triggering}
+                  className="flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+                >
+                  {triggering ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Bitte warten...</>
+                  ) : (
+                    <><RefreshCw className="h-4 w-4" /> Erneut analysieren</>
+                  )}
+                </button>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
@@ -430,26 +535,42 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
       {/* Tab: Quellen & Links */}
       {activeTab === "sources" && (
         <div className="space-y-4">
+          {(() => {
+            // ZVG-ID aufsplitten: "HE-54578" → land="he", numId="54578"
+            const zvgParts = p.zvg_id?.split("-") ?? [];
+            const zvgLandRaw = zvgParts[0] ?? p.land_abk ?? "";
+            const zvgLand = zvgLandRaw.toLowerCase();
+            const zvgNumId = zvgParts[1] ?? "";
+            const zvgDirectUrl = zvgNumId && zvgLand
+              ? `https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=${zvgNumId}&land_abk=${zvgLand}`
+              : null;
+
+            return (
+              <>
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <h3 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-50">Offizielle Quellen</h3>
             <div className="flex flex-col gap-3">
-              <SourceLink
-                title="ZVG-Portal (Bundeseinheitlich)"
-                url="https://www.zvg-portal.de"
-                description="Amtliches Zwangsversteigerungsportal der deutschen Amtsgerichte"
-              />
-              {p.land_abk && (
+              {zvgDirectUrl && (
                 <SourceLink
-                  title={`ZVG-Portal ${BUNDESLAENDER[p.land_abk] ?? p.land_abk.toUpperCase()}`}
-                  url={`https://www.zvg-portal.de/index.php?button=Suchen&all=1&land_abk=${p.land_abk}`}
-                  description={`Alle Objekte in ${BUNDESLAENDER[p.land_abk] ?? p.land_abk.toUpperCase()}`}
+                  title="Direkt zum Objekt im ZVG-Portal"
+                  url={zvgDirectUrl}
+                  description={`Amtliche Objektseite - AZ ${p.court_file_number ?? p.zvg_id}`}
                 />
               )}
-              <SourceLink
-                title="Amtsgericht"
-                url={`https://www.google.com/search?q=Amtsgericht+${encodeURIComponent(p.court)}+Zwangsversteigerung`}
-                description={`Mehr Informationen zum ${p.court}`}
-              />
+              {p.land_abk && (
+                <SourceLink
+                  title={`ZVG-Portal ${BUNDESLAENDER[p.land_abk] ?? p.land_abk.toUpperCase()} - Alle Objekte`}
+                  url={`https://www.zvg-portal.de/index.php?button=Suchen&all=1&land_abk=${p.land_abk}`}
+                  description={`Alle aktuellen Zwangsversteigerungen in ${BUNDESLAENDER[p.land_abk] ?? p.land_abk.toUpperCase()}`}
+                />
+              )}
+              {p.court && p.land_abk && (
+                <SourceLink
+                  title={`${p.court} - Versteigerungen`}
+                  url={`https://www.zvg-portal.de/index.php?button=Suchen&all=1&land_abk=${p.land_abk}&ger_name=${encodeURIComponent(p.court)}`}
+                  description={`Alle Objekte dieses Amtsgerichts im ZVG-Portal`}
+                />
+              )}
             </div>
           </div>
 
@@ -467,19 +588,14 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                 description="Street View, POIs und Routenplanung"
               />
               <SourceLink
-                title="Boris-BW / Boris-Online (Bodenrichtwert)"
-                url={`https://www.boris-online.de/`}
+                title="Boris-Online (Bodenrichtwert)"
+                url="https://www.boris-online.de/"
                 description="Offizielle Bodenrichtwerte der Gutachterausschusse (kostenfrei)"
               />
               <SourceLink
                 title="Statistisches Amt - Immobilienpreisindex"
                 url="https://www.destatis.de/DE/Themen/Wirtschaft/Preise/Baupreise-Immobilienpreisindex/_inhalt.html"
                 description="Offizielle Preisindizes des Statistischen Bundesamts"
-              />
-              <SourceLink
-                title="Wikidata - Region"
-                url={`https://www.wikidata.org/w/index.php?search=${encodeURIComponent(p.city ?? p.zip_code)}`}
-                description="Strukturierte Daten uber Gemeinden, Einwohnerzahlen, Wirtschaft"
               />
               <SourceLink
                 title="GovData - Offene Verwaltungsdaten"
@@ -504,6 +620,9 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               />
             </div>
           </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

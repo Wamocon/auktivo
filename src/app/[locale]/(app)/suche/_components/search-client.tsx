@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Search, Filter, Lock, Loader2, MapPin, Building2, Calendar, TrendingUp } from "lucide-react";
+import { Search, Filter, Lock, Loader2, MapPin, Building2, Calendar, TrendingUp, Euro, Map } from "lucide-react";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { PropertyModal } from "./property-modal";
 import { daysUntil } from "@/lib/utils/date";
+import { BUNDESLAENDER } from "@/lib/utils/bundeslaender";
 import type { Profile, PropertyWithAnalysis, RiskLevel, PropertyType } from "@/lib/types/database";
 
 interface SearchClientProps {
@@ -114,8 +115,11 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
   const isPro = profile?.plan === "pro";
 
   const [zip, setZip] = useState("");
+  const [bundesland, setBundesland] = useState("");
   const [radius, setRadius] = useState<number>(25);
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
+  const [budgetMin, setBudgetMin] = useState<string>("");
+  const [budgetMax, setBudgetMax] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<PropertyWithAnalysis[]>([]);
   const [searched, setSearched] = useState(false);
@@ -131,8 +135,11 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
 
     const params = new URLSearchParams();
     if (zip) params.set("zip", zip);
+    if (bundesland) params.set("bundesland", bundesland);
     params.set("radius", String(radius));
     if (propertyTypes.length) params.set("types", propertyTypes.join(","));
+    if (budgetMin) params.set("budget_min", budgetMin);
+    if (budgetMax) params.set("budget_max", budgetMax);
 
     const res = await fetch(`/api/search?${params.toString()}`);
     const data = await res.json() as { properties?: PropertyWithAnalysis[]; limitReached?: boolean; error?: string };
@@ -144,6 +151,8 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
     setSearched(true);
     setLoading(false);
   }
+
+  const canSearch = zip.length > 0 || bundesland.length > 0;
 
   const propertyTypeOptions: { value: PropertyType; label: string }[] = [
     { value: "house", label: t("property_types.house") },
@@ -164,6 +173,25 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
           </h2>
 
           <div className="flex flex-col gap-4">
+            {/* Bundesland */}
+            <div>
+              <label htmlFor="bundesland-select" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <Map className="h-3.5 w-3.5" /> Bundesland
+              </label>
+              <select
+                id="bundesland-select"
+                value={bundesland}
+                onChange={(e) => setBundesland(e.target.value)}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+              >
+                <option value="">Alle Bundeslaender</option>
+                {BUNDESLAENDER.map((bl) => (
+                  <option key={bl.short} value={bl.short}>{bl.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* PLZ + Umkreis */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">PLZ</label>
               <input
@@ -191,6 +219,29 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
                     {r}km
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Budget */}
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <Euro className="h-3.5 w-3.5" /> Budget (Mindestgebot)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Min EUR"
+                  value={budgetMin}
+                  onChange={(e) => setBudgetMin(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+                <input
+                  type="number"
+                  placeholder="Max EUR"
+                  value={budgetMax}
+                  onChange={(e) => setBudgetMax(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
               </div>
             </div>
 
@@ -236,7 +287,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
 
             <button
               type="submit"
-              disabled={loading || !zip}
+              disabled={loading || !canSearch}
               className="flex items-center justify-center gap-2 rounded-full bg-zinc-900 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-zinc-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -289,8 +340,8 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
               <Search className="h-5 w-5 text-zinc-400" />
             </div>
-            <p className="text-sm font-medium text-zinc-500">PLZ eingeben und suchen</p>
-            <p className="text-xs text-zinc-400">z.B. 80539 fuer Muenchen-Innenstadt</p>
+            <p className="text-sm font-medium text-zinc-500">Bundesland oder PLZ eingeben und suchen</p>
+            <p className="text-xs text-zinc-400">z.B. Bayern oder 80539 fuer Muenchen</p>
           </div>
         )}
 

@@ -50,6 +50,11 @@ export function Header({ profile, locale }: HeaderProps) {
               <Link href="/suche" locale={locale} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
                 {t("search")}
               </Link>
+              {isPro && (
+                <Link href="/empfehlungen" locale={locale} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+                  {t("recommendations")}
+                </Link>
+              )}
               {isAdmin && (
                 <a
                   href={`/${locale}/admin/dashboard`}
@@ -136,6 +141,9 @@ export function Header({ profile, locale }: HeaderProps) {
             {isLoggedIn ? (
               <>
                 <Link href="/dashboard" locale={locale} className="text-sm font-medium" onClick={() => setMenuOpen(false)}>{t("dashboard")}</Link>
+                {isPro && (
+                  <Link href="/empfehlungen" locale={locale} className="text-sm font-medium" onClick={() => setMenuOpen(false)}>{t("recommendations")}</Link>
+                )}
                 <Link href="/profil" locale={locale} className="text-sm font-medium" onClick={() => setMenuOpen(false)}>{t("profile")}</Link>
                 {isAdmin && (
                   <a href={`/${locale}/admin/dashboard`} className="text-sm font-semibold text-red-600" onClick={() => setMenuOpen(false)}>{t("admin")}</a>

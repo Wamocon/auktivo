@@ -58,6 +58,10 @@ describe("isProtectedRoute", () => {
     expect(isProtectedRoute("")).toBe(false);
   });
 
+  it("erkennt /empfehlungen als geschuetzte Route", () => {
+    expect(isProtectedRoute("/de/empfehlungen")).toBe(true);
+  });
+
   it("erkennt englische Locale-Variante /en/dashboard", () => {
     expect(isProtectedRoute("/en/dashboard")).toBe(true);
   });

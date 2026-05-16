@@ -47,6 +47,12 @@ export interface Property {
   market_value: number | null;
   minimum_bid: number | null;
   document_urls: string[];
+  art_versteigerung: string | null;
+  grundbuch: string | null;
+  beschreibung: string | null;
+  versteigerungsort: string | null;
+  glaeubigerinfo: string | null;
+  geoserver_url: string | null;
   status: PropertyStatus;
   last_crawled_at: string | null;
   created_at: string;

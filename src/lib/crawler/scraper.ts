@@ -1,28 +1,18 @@
 import { parse } from "node-html-parser";
 import type { CrawlerPropertyType, ZvgEntry, ZvgLand } from "./types";
+import { BUNDESLAENDER } from "@/lib/utils/bundeslaender";
 
 const BASE_URL = "https://www.zvg-portal.de";
 
-// Alle 16 Bundeslaender mit ZVG-Abkuerzungen
-export const BUNDESLAENDER: ZvgLand[] = [
-  { short: "bw", name: "Baden-Württemberg" },
-  { short: "by", name: "Bayern" },
-  { short: "be", name: "Berlin" },
-  { short: "bb", name: "Brandenburg" },
-  { short: "hb", name: "Bremen" },
-  { short: "hh", name: "Hamburg" },
-  { short: "he", name: "Hessen" },
-  { short: "mv", name: "Mecklenburg-Vorpommern" },
-  { short: "ni", name: "Niedersachsen" },
-  { short: "nw", name: "Nordrhein-Westfalen" },
-  { short: "rp", name: "Rheinland-Pfalz" },
-  { short: "sl", name: "Saarland" },
-  { short: "sn", name: "Sachsen" },
-  { short: "st", name: "Sachsen-Anhalt" },
-  { short: "sh", name: "Schleswig-Holstein" },
-  { short: "th", name: "Thüringen" },
-];
+/**
+ * Gibt den Event-Loop frei, damit der Next.js-Server auf andere
+ * Requests reagieren kann waehrend der Crawler schwere HTML-Parse-Arbeit erledigt.
+ */
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
 
+// LAND_FULLNAME fuer interne Nutzung
 const LAND_FULLNAME: Record<string, string> = Object.fromEntries(
   BUNDESLAENDER.map((l) => [l.short, l.name])
 );
@@ -38,21 +28,22 @@ const PLZ_ORT_REGEX = /(\d{5})\s+([\wÄÖÜäöüß\s\-]+?)(?:,|$)/;
 
 async function fetchHtml(
   url: string,
-  options?: RequestInit
+  options?: RequestInit & { timeoutMs?: number }
 ): Promise<string> {
+  const { timeoutMs = 10_000, ...fetchOptions } = options ?? {};
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       signal: controller.signal,
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; Auktivo/1.0; +https://auktivo.de)",
         Accept: "text/html,application/xhtml+xml",
         "Accept-Language": "de-DE,de;q=0.9",
-        ...(options?.headers ?? {}),
+        ...(fetchOptions?.headers ?? {}),
       },
     });
 
@@ -256,6 +247,7 @@ function rawRowToEntry(row: RawRow, land_abk: string): ZvgEntry | null {
 
   return {
     zvg_id,
+    zvg_id_numeric: row.zvg_id_numeric,
     land_abk,
     aktenzeichen: aktenzeichen ?? null,
     amtsgericht,
@@ -270,7 +262,116 @@ function rawRowToEntry(row: RawRow, land_abk: string): ZvgEntry | null {
     termin: terminRaw ? parseTermin(terminRaw) : null,
     document_urls: [],
     property_type: objekt_lage ? detectPropertyType(objekt_lage) : "other",
+    // Detail-Felder: werden spaeter durch scrapeZvgDetail gefuellt
+    art_versteigerung: null,
+    grundbuch: null,
+    beschreibung: null,
+    versteigerungsort: null,
+    glaeubigerinfo: null,
+    geoserver_url: null,
   };
+}
+
+// ---------------------------------------------------------------
+// Detail-Seite Scraper
+// ---------------------------------------------------------------
+
+export interface ZvgDetailData {
+  art_versteigerung: string | null;
+  grundbuch: string | null;
+  beschreibung: string | null;
+  versteigerungsort: string | null;
+  glaeubigerinfo: string | null;
+  geoserver_url: string | null;
+  document_urls: string[];
+}
+
+/**
+ * Scraped die Detailseite eines einzelnen ZVG-Objekts.
+ * URL-Muster: /index.php?button=showZvg&zvg_id={id}&land_abk={abk}
+ */
+export async function scrapeZvgDetail(
+  zvg_id_numeric: string,
+  land_abk: string
+): Promise<ZvgDetailData> {
+  const url = `${BASE_URL}/index.php?button=showZvg&zvg_id=${zvg_id_numeric}&land_abk=${land_abk}`;
+  const result: ZvgDetailData = {
+    art_versteigerung: null,
+    grundbuch: null,
+    beschreibung: null,
+    versteigerungsort: null,
+    glaeubigerinfo: null,
+    geoserver_url: null,
+    document_urls: [],
+  };
+
+  let html: string;
+  try {
+    html = await fetchHtml(url, { timeoutMs: 8_000 }); // kurzes Timeout fuer Detail-Seiten
+  } catch {
+    return result;
+  }
+
+  // Event-Loop freigeben bevor schweres synchrones HTML-Parsing beginnt
+  await yieldToEventLoop();
+  const root = parse(html);
+
+  for (const tr of root.querySelectorAll("tr")) {
+    const tds = tr.querySelectorAll("td");
+    if (tds.length < 2) continue;
+
+    const label = normalizeText(tds[0].text).replace(/:$/, "").toLowerCase();
+    const valueCell = tds[1];
+    const value = normalizeText(valueCell.text);
+
+    // Textfelder extrahieren (case-insensitive, umlaut-tolerant)
+    if (/art der versteigerung|versteigerungsart/.test(label)) {
+      result.art_versteigerung = value || null;
+    } else if (/grundbuch/.test(label)) {
+      result.grundbuch = value || null;
+    } else if (/beschreibung/.test(label)) {
+      result.beschreibung = value || null;
+    } else if (/ort der versteigerung|versteigerungsort/.test(label)) {
+      result.versteigerungsort = value || null;
+    } else if (/gl.ubiger|gl.ubigerinformation/.test(label)) {
+      result.glaeubigerinfo = value !== "keine Angaben" ? value || null : null;
+    }
+
+    // GeoServer-Link
+    const geoLink = valueCell.querySelector("a[href*='geoserver'], a[href*='geoportal'], a[href*='gis'], a[href*='karten']");
+    if (geoLink) {
+      const href = geoLink.getAttribute("href") ?? "";
+      result.geoserver_url = href.startsWith("http") ? href : `${BASE_URL}${href.startsWith("/") ? "" : "/"}${href}`;
+    }
+
+    // PDF-Links (amtl. Bekanntmachung, Exposee, Gutachten, Beschluss, etc.)
+    for (const a of valueCell.querySelectorAll("a")) {
+      const href = a.getAttribute("href") ?? "";
+      const linkText = normalizeText(a.text).toLowerCase();
+
+      const isPdf =
+        href.toLowerCase().includes(".pdf") ||
+        href.toLowerCase().includes("showdoc") ||
+        href.toLowerCase().includes("download") ||
+        /bekanntmachung|expos|gutachten|beschluss|dokument|anlage/.test(linkText);
+
+      if (isPdf && href) {
+        let absoluteUrl: string;
+        if (href.startsWith("http")) {
+          absoluteUrl = href;
+        } else if (href.startsWith("/")) {
+          absoluteUrl = `${BASE_URL}${href}`;
+        } else {
+          absoluteUrl = `${BASE_URL}/${href}`;
+        }
+        if (!result.document_urls.includes(absoluteUrl)) {
+          result.document_urls.push(absoluteUrl);
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 // ---------------------------------------------------------------
@@ -314,6 +415,8 @@ export async function scrapeZvgLand(land: ZvgLand): Promise<ZvgEntry[]> {
     },
   });
 
+  // Event-Loop freigeben bevor synchrones HTML-Parsing
+  await yieldToEventLoop();
   const rawRows = parseHtmlTable(html);
   const entries: ZvgEntry[] = [];
 

@@ -12,6 +12,7 @@
     "dashboard": "Dashboard",
     "favorites": "Favoriten",
     "alerts": "Alarme",
+    "recommendations": "Empfehlungen",
     "profile": "Profil",
     "logout": "Abmelden",
     "upgrade": "Upgrade auf Pro",
@@ -239,9 +240,15 @@
       "sold": "Zugeschlagen"
     }
   },
+  "recommendations": {
+    "title": "KI-Empfehlungen",
+    "subtitle": "Beschreibe deine Kriterien und lass die KI passende Objekte aus aktuellen Versteigerungen empfehlen.",
+    "pro_feature_name": "KI-Empfehlungen"
+  },
   "chat": {
     "title": "KI-Chat-Assistent",
     "subtitle": "Stelle Fragen zum Gutachten",
+    "start_chat": "Stelle deine erste Frage zu diesem Objekt, zum Verfahren oder zum Bietprozess.",
     "placeholder": "z.B. Was bedeutet diese Baulast konkret?",
     "send": "Senden",
     "thinking": "KI denkt nach...",

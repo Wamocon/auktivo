@@ -151,11 +151,12 @@ describe("checkSearchLimit", () => {
     expect(result).toEqual({ allowed: false, remaining: 0 });
   });
 
-  it("gibt allowed=false und remaining=0 bei RPC-Fehler zurueck", async () => {
+  it("gibt allowed=true (fail-open) und remaining=0 bei RPC-Fehler zurueck", async () => {
     mockSupabase({ rpcError: true });
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await checkSearchLimit("user-123");
-    expect(result).toEqual({ allowed: false, remaining: 0 });
+    // Bei DB-Fehler: fail-open (besser UX als False-Negative)
+    expect(result).toEqual({ allowed: true, remaining: 0 });
     consoleSpy.mockRestore();
   });
 

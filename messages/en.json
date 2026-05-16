@@ -11,8 +11,7 @@
     "register": "Start Free",
     "dashboard": "Dashboard",
     "favorites": "Favorites",
-    "alerts": "Alerts",
-    "profile": "Profile",
+    "alerts": "Alerts",    "recommendations": "Recommendations",    "profile": "Profile",
     "logout": "Sign Out",
     "upgrade": "Upgrade to Pro",
     "admin": "Admin"
@@ -239,9 +238,15 @@
       "sold": "Sold"
     }
   },
+  "recommendations": {
+    "title": "AI Recommendations",
+    "subtitle": "Describe your criteria and let the AI recommend matching properties from current auctions.",
+    "pro_feature_name": "AI Recommendations"
+  },
   "chat": {
     "title": "AI Chat Assistant",
     "subtitle": "Ask questions about the report",
+    "start_chat": "Ask your first question about this property, the auction process, or how to place a bid.",
     "placeholder": "e.g. What does this encumbrance mean exactly?",
     "send": "Send",
     "thinking": "AI is thinking...",
