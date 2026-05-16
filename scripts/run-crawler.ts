@@ -184,7 +184,6 @@ function parseZvgHtml(html: string, land_abk: string) {
     const text = chunk
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&auml;/g, "ä")
@@ -194,6 +193,7 @@ function parseZvgHtml(html: string, land_abk: string) {
       .replace(/&Ouml;/g, "Ö")
       .replace(/&Uuml;/g, "Ü")
       .replace(/&szlig;/g, "ß")
+      .replace(/&amp;/g, "&")
       .replace(/\s+/g, " ")
       .trim();
 
