@@ -21,67 +21,64 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await request.json() as { userId: string; action: string; payload?: Record<string, unknown> };
-  const { userId, action, payload } = body;
+  const body = await request.json() as { userId: string; action: string; value?: string };
+  const { userId, action, value } = body;
 
   if (!userId || !action) {
     return NextResponse.json({ error: "Missing userId or action" }, { status: 400 });
   }
 
-  // Prevent self-demotion from admin
-  if (userId === user.id && (action === "revoke_admin" || action === "downgrade_free" || action === "delete_user")) {
-    return NextResponse.json({ error: "Eigenen Account nicht veränderbar" }, { status: 400 });
+  // Prevent self-modification of critical fields
+  if (userId === user.id && (action === "revoke_admin" || action === "downgrade_free" || action === "delete")) {
+    return NextResponse.json({ error: "Cannot modify own account this way" }, { status: 400 });
   }
 
   const admin = createAdminClient();
+  let updateData: Record<string, unknown> = {};
 
   switch (action) {
-    case "promote_admin": {
-      const { error } = await admin.from("profiles").update({ is_admin: true }).eq("id", userId);
-      if (error) return NextResponse.json({ error: "Datenbankfehler" }, { status: 500 });
-      return NextResponse.json({ success: true });
-    }
-    case "revoke_admin": {
-      const { error } = await admin.from("profiles").update({ is_admin: false }).eq("id", userId);
-      if (error) return NextResponse.json({ error: "Datenbankfehler" }, { status: 500 });
-      return NextResponse.json({ success: true });
-    }
-    case "upgrade_pro": {
-      const { error } = await admin.from("profiles").update({ plan: "pro" }).eq("id", userId);
-      if (error) return NextResponse.json({ error: "Datenbankfehler" }, { status: 500 });
-      return NextResponse.json({ success: true });
-    }
-    case "downgrade_free": {
-      const { error } = await admin.from("profiles").update({ plan: "free" }).eq("id", userId);
-      if (error) return NextResponse.json({ error: "Datenbankfehler" }, { status: 500 });
-      return NextResponse.json({ success: true });
-    }
-    case "reset_search_count": {
-      const { error } = await admin
-        .from("profiles")
-        .update({ monthly_search_count: 0, monthly_search_reset_at: new Date().toISOString() })
-        .eq("id", userId);
-      if (error) return NextResponse.json({ error: "Datenbankfehler" }, { status: 500 });
-      return NextResponse.json({ success: true });
-    }
-    case "edit_user": {
-      if (!payload) return NextResponse.json({ error: "Keine Daten" }, { status: 400 });
-      const allowed: Record<string, unknown> = {};
-      if (typeof payload.full_name === "string") allowed.full_name = payload.full_name;
-      if (typeof payload.company_name === "string") allowed.company_name = payload.company_name;
-      if (payload.user_type === "private" || payload.user_type === "business") allowed.user_type = payload.user_type;
-      if (payload.plan === "free" || payload.plan === "pro") allowed.plan = payload.plan;
-      const { error } = await admin.from("profiles").update(allowed).eq("id", userId);
-      if (error) return NextResponse.json({ error: "Datenbankfehler" }, { status: 500 });
-      return NextResponse.json({ success: true });
-    }
-    case "delete_user": {
-      // Löscht den Auth-User (Cascade löscht das Profil)
-      const { error } = await admin.auth.admin.deleteUser(userId);
-      if (error) return NextResponse.json({ error: "Fehler beim Löschen" }, { status: 500 });
+    case "promote_admin":
+      updateData = { is_admin: true };
+      break;
+    case "revoke_admin":
+      updateData = { is_admin: false };
+      break;
+    case "upgrade_pro":
+      updateData = { plan: "pro", subscription_status: "active" };
+      break;
+    case "downgrade_free":
+      updateData = { plan: "free", subscription_status: "cancelled" };
+      break;
+    case "change_name":
+      if (!value?.trim()) return NextResponse.json({ error: "Name darf nicht leer sein" }, { status: 400 });
+      updateData = { full_name: value.trim() };
+      break;
+    case "change_type":
+      if (value !== "private" && value !== "business") return NextResponse.json({ error: "Ungültiger Typ" }, { status: 400 });
+      updateData = { user_type: value };
+      break;
+    case "reset_searches":
+      updateData = { monthly_search_count: 0 };
+      break;
+    case "delete": {
+      // Delete from auth (cascades to profiles via FK)
+      const { error: authErr } = await admin.auth.admin.deleteUser(userId);
+      if (authErr) return NextResponse.json({ error: "Auth-Löschung fehlgeschlagen" }, { status: 500 });
       return NextResponse.json({ success: true });
     }
     default:
-      return NextResponse.json({ error: "Unbekannte Aktion" }, { status: 400 });
+      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
+
+  const { error } = await admin
+    .from("profiles")
+    .update(updateData)
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[Admin/Users API] Update error:", error.message);
+    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
 }

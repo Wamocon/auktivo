@@ -25,7 +25,7 @@ Write-Host "=== Auktivo Local DB Fix ===" -ForegroundColor Cyan
 Write-Host "`n[1/3] Schemas in DB umbenennen..." -ForegroundColor Yellow
 
 $psql = "psql"
-$dbUrl = "postgresql://postgres:postgres@127.0.0.1:54332/postgres"
+$dbUrl = "postgresql://postgres:postgres@127.0.0.1:54332/postgres" # notsecret - local dev only
 $sqlFile = Join-Path $PSScriptRoot "rename-schemas.sql"
 
 if (-not (Test-Path $sqlFile)) {

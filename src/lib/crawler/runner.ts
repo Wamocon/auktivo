@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BUNDESLAENDER, scrapeZvgLand } from "./scraper";
-import { getCrawlerProgress, setCrawlerProgress, resetCrawlerProgress } from "./state";
+import { getCrawlerProgress, setCrawlerProgress, resetCrawlerProgress, sendControlSignal } from "./state";
 import type { CrawlerRunResult, ZvgEntry } from "./types";
 
 export { getCrawlerProgress };
@@ -9,15 +9,6 @@ const RATE_LIMIT_MS = 2_000; // 2 Sekunden zwischen Bundeslaender-Requests
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Wartet, solange pauseRequested=true ist. Gibt false zurück wenn cancel angefordert. */
-async function waitWhilePaused(): Promise<boolean> {
-  while (getCrawlerProgress().pauseRequested) {
-    if (getCrawlerProgress().cancelRequested) return false;
-    await sleep(500);
-  }
-  return !getCrawlerProgress().cancelRequested;
 }
 
 async function upsertProperty(
@@ -139,22 +130,28 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
   let totalErrors = 0;
 
   for (const land of BUNDESLAENDER) {
-    // Abbruch prüfen
-    if (getCrawlerProgress().cancelRequested) {
-      console.log("[Crawler] Abbruch angefordert - stoppe.");
-      setCrawlerProgress({ phase: "error", lastError: "Abgebrochen", finishedAt: new Date().toISOString(), currentLand: null });
-      await admin.from("crawler_runs").update({ status: "failed", finished_at: new Date().toISOString(), error_message: "Vom Admin abgebrochen" }).eq("id", runId);
+    // Abort-Signal prüfen
+    if (getCrawlerProgress().controlSignal === "abort") {
+      console.log("[Crawler] Abbruch-Signal empfangen - beende Lauf");
+      sendControlSignal("none");
+      setCrawlerProgress({ phase: "aborted", finishedAt: new Date().toISOString(), currentLand: null });
+      await admin.from("crawler_runs").update({ status: "failed", finished_at: new Date().toISOString(), error_message: "Manuell abgebrochen" }).eq("id", runId);
       return { run_id: runId, scraped: totalScraped, inserted: totalInserted, skipped: totalSkipped, errors: totalErrors, duration_ms: Date.now() - startTime };
     }
 
-    // Pause prüfen - warten bis Resume
-    if (getCrawlerProgress().pauseRequested) {
-      const continued = await waitWhilePaused();
-      if (!continued) {
-        setCrawlerProgress({ phase: "error", lastError: "Abgebrochen", finishedAt: new Date().toISOString(), currentLand: null });
-        await admin.from("crawler_runs").update({ status: "failed", finished_at: new Date().toISOString(), error_message: "Vom Admin abgebrochen" }).eq("id", runId);
-        return { run_id: runId, scraped: totalScraped, inserted: totalInserted, skipped: totalSkipped, errors: totalErrors, duration_ms: Date.now() - startTime };
-      }
+    // Pause-Signal prüfen - wartet bis Resume oder Abort
+    while (getCrawlerProgress().controlSignal === "pause") {
+      setCrawlerProgress({ phase: "paused" });
+      await sleep(1000);
+      if (getCrawlerProgress().controlSignal === "abort") break;
+    }
+    if (getCrawlerProgress().controlSignal === "abort") {
+      sendControlSignal("none");
+      setCrawlerProgress({ phase: "aborted", finishedAt: new Date().toISOString(), currentLand: null });
+      await admin.from("crawler_runs").update({ status: "failed", finished_at: new Date().toISOString(), error_message: "Manuell abgebrochen" }).eq("id", runId);
+      return { run_id: runId, scraped: totalScraped, inserted: totalInserted, skipped: totalSkipped, errors: totalErrors, duration_ms: Date.now() - startTime };
+    }
+    if (getCrawlerProgress().phase === "paused") {
       setCrawlerProgress({ phase: "running" });
     }
 

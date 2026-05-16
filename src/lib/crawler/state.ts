@@ -5,7 +5,8 @@
  */
 
 export interface CrawlerProgress {
-  phase: "idle" | "running" | "paused" | "completed" | "error";
+  phase: "idle" | "running" | "paused" | "completed" | "error" | "aborted";
+  controlSignal: "none" | "pause" | "abort";
   runId: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -16,12 +17,11 @@ export interface CrawlerProgress {
   insertedProperties: number;
   errors: number;
   lastError: string | null;
-  cancelRequested: boolean;
-  pauseRequested: boolean;
 }
 
 const initial: CrawlerProgress = {
   phase: "idle",
+  controlSignal: "none",
   runId: null,
   startedAt: null,
   finishedAt: null,
@@ -32,8 +32,6 @@ const initial: CrawlerProgress = {
   insertedProperties: 0,
   errors: 0,
   lastError: null,
-  cancelRequested: false,
-  pauseRequested: false,
 };
 
 // Globales Singleton - überlebt zwischen Requests im selben Prozess
@@ -54,20 +52,8 @@ export function resetCrawlerProgress(): void {
   g._crawlerProgress = { ...initial };
 }
 
-export function requestCancel(): void {
-  if (g._crawlerProgress) g._crawlerProgress.cancelRequested = true;
-}
-
-export function requestPause(): void {
+export function sendControlSignal(signal: "pause" | "abort" | "none"): void {
   if (g._crawlerProgress) {
-    g._crawlerProgress.pauseRequested = true;
-    g._crawlerProgress.phase = "paused";
-  }
-}
-
-export function requestResume(): void {
-  if (g._crawlerProgress) {
-    g._crawlerProgress.pauseRequested = false;
-    g._crawlerProgress.phase = "running";
+    g._crawlerProgress.controlSignal = signal;
   }
 }
