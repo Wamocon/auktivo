@@ -29,7 +29,7 @@ export default async function AdminSettingsPage({
   const settings = await getAppSettings();
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           <Settings className="h-6 w-6" />
