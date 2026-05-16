@@ -123,6 +123,15 @@ describe("canAccess", () => {
       expect(await canAccess("user-pro", feature)).toBe(true);
     }
   });
+
+  it("gibt true zurueck fuer nicht-Pro-Feature (Runtime-Guard)", async () => {
+    // PRO_FEATURES enthaelt alle Feature-Typ-Werte - dieser Branch ist per Typ
+    // nicht erreichbar, aber der Runtime-Guard muss trotzdem abgedeckt sein.
+    // Typcast notwendig um den Fall zu testen.
+    const unknownFeature = "search" as unknown as import("@/lib/feature-gate").Feature;
+    mockSupabase({ plan: "free" });
+    expect(await canAccess("user-free", unknownFeature)).toBe(true);
+  });
 });
 
 describe("checkSearchLimit", () => {

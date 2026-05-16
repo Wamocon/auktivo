@@ -1,6 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Plan = "free" | "pro";
+export type UserType = "private" | "business";
 export type PropertyType = "house" | "apartment" | "commercial" | "land" | "other";
 export type PropertyStatus = "active" | "withdrawn" | "sold";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
@@ -14,7 +15,11 @@ export interface Profile {
   email: string;
   full_name: string | null;
   plan: Plan;
+  user_type: UserType;
   is_admin: boolean;
+  phone: string | null;
+  company_name: string | null;
+  email_notifications: boolean;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   subscription_status: string | null;

@@ -159,6 +159,9 @@ while IFS= read -r file; do
     echo "$line" | grep -qiE '(service_role|supabase_service_role)\s*[=:]\s*["\x27]?ey[A-Za-z0-9_-]{20,}' \
       && flag_match "$file" "$line_no" "$line" "Supabase service role key"
 
+    echo "$line" | grep -qE 'sb_publishable_[A-Za-z0-9_-]{20,}' \
+      && flag_match "$file" "$line_no" "$line" "Supabase anon/publishable key hard-coded in file"
+
   done < "$tmp_content_file"
   rm -f "$tmp_content_file"
 

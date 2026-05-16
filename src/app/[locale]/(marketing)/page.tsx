@@ -24,7 +24,7 @@ export default async function HomePage({
       <section className="hero-grid relative overflow-hidden px-4 pb-24 pt-20 sm:px-6">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.04)_1px,transparent_1px)] bg-[size:48px_48px]"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(99,102,241,0.04)_1px,transparent_1px)] bg-size-[48px_48px]"
         />
         <div className="relative mx-auto max-w-4xl text-center">
           <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-4 py-1.5 text-sm font-medium text-brand-700 dark:border-brand-800/40 dark:bg-brand-900/20 dark:text-brand-300">
@@ -133,7 +133,7 @@ export default async function HomePage({
             In drei einfachen Schritten zur fundierten Entscheidungsgrundlage.
           </p>
           <div className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="absolute left-1/2 top-8 hidden h-px w-2/3 -translate-x-1/2 bg-gradient-to-r from-transparent via-brand-200 to-transparent dark:via-brand-800 md:block" />
+            <div className="absolute left-1/2 top-8 hidden h-px w-2/3 -translate-x-1/2 bg-linear-to-r from-transparent via-brand-200 to-transparent dark:via-brand-800 md:block" />
             {[
               { icon: FileSearch, title: tSolution("step1_title"), desc: tSolution("step1_desc"), step: "01", color: "brand" },
               { icon: BrainCircuit, title: tSolution("step2_title"), desc: tSolution("step2_desc"), step: "02", color: "purple" },

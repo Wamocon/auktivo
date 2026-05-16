@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "title": "Auktivo - KI-Assistent fuer Zwangsversteigerungen",
-    "description": "Analysiere Zwangsversteigerungen in Minuten statt Stunden. KI-gestuetzte Risikoanalyse, Chat-Assistent und automatische Benachrichtigungen."
+    "title": "Auktivo - KI-Assistent für Zwangsversteigerungen",
+    "description": "Analysiere Zwangsversteigerungen in Minuten statt Stunden. KI-gestützte Risikoanalyse, Chat-Assistent und automatische Benachrichtigungen."
   },
   "nav": {
     "search": "Suche",
@@ -18,9 +18,9 @@
     "admin": "Admin"
   },
   "hero": {
-    "badge": "KI-gestuetzte Analyse",
+    "badge": "KI-gestützte Analyse",
     "title": "Zwangsversteigerungen intelligent analysieren",
-    "subtitle": "Was bisher 2 Stunden manuelle Pruefung kostete, erledigt Auktivo in Minuten. KI liest das Gutachten, extrahiert Risiken und beantwortet deine Fragen.",
+    "subtitle": "Was bisher 2 Stunden manuelle Prüfung kostete, erledigt Auktivo in Minuten. KI liest das Gutachten, extrahiert Risiken und beantwortet deine Fragen.",
     "cta_primary": "Kostenlos starten",
     "cta_secondary": "Wie funktioniert es?",
     "stats": {
@@ -30,37 +30,37 @@
     }
   },
   "problem": {
-    "title": "Warum 70% frustriert aufgeben",
-    "description": "Das staatliche ZVG-Portal zeigt Termine und Gutachten - aber als unleserliche 60- bis 100-seitige PDF- und TIF-Dateien. Ohne Fachwissen unmoeglich zu bewerten.",
+    "title": "Warum 70 % frustriert aufgeben",
+    "description": "Das staatliche ZVG-Portal zeigt Termine und Gutachten - aber als unleserliche 60- bis 100-seitige PDF- und TIF-Dateien. Ohne Fachwissen unmöglich zu bewerten.",
     "points": [
       "Gutachten: 60-100 Seiten kaum lesbare Scans",
-      "Keine Filtermoeglichkeit nach Risiko",
-      "Juristische Fachbegriffe ohne Erklaerung",
-      "Teure Profi-Tools nur fuer Grossinvestoren"
+      "Keine Filtermöglichkeit nach Risiko",
+      "Juristische Fachbegriffe ohne Erklärung",
+      "Teure Profi-Tools nur für Großinvestoren"
     ]
   },
   "solution": {
-    "title": "Auktivo loest das",
+    "title": "Auktivo löst das",
     "step1_title": "Alle Termine aggregiert",
-    "step1_desc": "Taeglicher Import aller Zwangsversteigerungstermine aus dem ZVG-Portal. Filterbar nach PLZ, Objekttyp und Verkehrswert.",
+    "step1_desc": "Täglicher Import aller Zwangsversteigerungstermine aus dem ZVG-Portal. Filterbar nach PLZ, Objekttyp und Verkehrswert.",
     "step2_title": "KI analysiert das Gutachten",
     "step2_desc": "OCR liest das Dokument aus. Unsere KI MAX extrahiert Baulasten, Sanierungsbedarf, Mietprobleme und Grundbuchbelastungen.",
     "step3_title": "Fragen stellen, sicher bieten",
-    "step3_desc": "Der KI-Chat-Assistent beantwortet deine Rueckfragen direkt - ohne Jurist, ohne Bausachverstaendiger."
+    "step3_desc": "Der KI-Chat-Assistent beantwortet deine Rückfragen direkt - ohne Jurist, ohne Bausachverständiger."
   },
   "features": {
     "title": "Alles was du brauchst",
     "ai_analysis": {
       "title": "KI-Risikoanalyse",
-      "desc": "Strukturierte Warnsignale fuer Baulasten, Sanierungsbedarf, Mietverhaeltnisse und Grundbuchbelastungen."
+      "desc": "Strukturierte Warnsignale für Baulasten, Sanierungsbedarf, Mietverhältnisse und Grundbuchbelastungen."
     },
     "ai_chat": {
       "title": "KI-Chat-Assistent",
-      "desc": "Stelle Rueckfragen zum Gutachten in natuerlicher Sprache. Die KI antwortet auf Basis des analysierten Dokuments."
+      "desc": "Stelle Rückfragen zum Gutachten in natürlicher Sprache. Die KI antwortet auf Basis des analysierten Dokuments."
     },
     "alerts": {
       "title": "Suchalarm",
-      "desc": "Erhalte sofort eine Benachrichtigung wenn neue Objekte in deinem Suchgebiet erscheinen."
+      "desc": "Erhalte sofort eine Benachrichtigung, wenn neue Objekte in deinem Suchgebiet erscheinen."
     },
     "search": {
       "title": "Erweiterte Suche",
@@ -90,8 +90,8 @@
       "period": "/Monat",
       "features": [
         "Unbegrenzte Suchen",
-        "Vollstaendige KI-Gutachtenanalyse",
-        "KI-Chat-Assistent fuer Rueckfragen",
+        "Vollständige KI-Gutachtenanalyse",
+        "KI-Chat-Assistent für Rückfragen",
         "Favoritenverwaltung",
         "Suchalarm (Push + E-Mail)",
         "Unbegrenzte PDF-Downloads"
@@ -100,36 +100,36 @@
       "badge": "Beliebt"
     },
     "per_month": "pro Monat",
-    "cancel_anytime": "Jederzeit kuendigbar - keine Bindung",
+    "cancel_anytime": "Jederzeit kündbar - keine Bindung",
     "upgrade_now": "Jetzt upgraden",
     "pro_features": {
-      "ai_analysis": "Vollstaendige KI-Gutachtenanalyse",
-      "ai_chat": "KI-Chat-Assistent fuer Rueckfragen",
+      "ai_analysis": "Vollständige KI-Gutachtenanalyse",
+      "ai_chat": "KI-Chat-Assistent für Rückfragen",
       "favorites": "Favoritenverwaltung",
       "alerts": "Suchalarm (Push + E-Mail)",
       "unlimited_search": "Unbegrenzte Suchen",
       "risk_filter": "Risikofilter (Pro-Stufen)",
-      "priority_support": "Prioritaets-Support"
+      "priority_support": "Prioritäts-Support"
     },
     "faq": {
-      "cancel_title": "Kann ich jederzeit kuendigen?",
-      "cancel_desc": "Ja. Kuendige jederzeit selbst ohne Supportkontakt. Dein Pro-Zugang bleibt bis zum Ende des bezahlten Monats aktiv.",
+      "cancel_title": "Kann ich jederzeit kündigen?",
+      "cancel_desc": "Ja. Kündige jederzeit selbst ohne Supportkontakt. Dein Pro-Zugang bleibt bis zum Ende des bezahlten Monats aktiv.",
       "data_title": "Was passiert mit meinen Daten?",
-      "data_desc": "Du kannst alle deine Daten jederzeit exportieren oder dein Konto vollstaendig loeschen (DSGVO-konform)."
+      "data_desc": "Du kannst alle deine Daten jederzeit exportieren oder dein Konto vollständig löschen (DSGVO-konform)."
     }
   },
   "disclaimer": {
-    "ai": "KI-Hinweis: Diese Analyse wurde automatisch erstellt und dient ausschliesslich der Orientierung. Sie ersetzt keine rechtliche, steuerliche oder bautechnische Fachberatung. WAMOCON GmbH uebernimmt keine Haftung fuer die Richtigkeit der KI-Ausgaben.",
+    "ai": "KI-Hinweis: Diese Analyse wurde automatisch erstellt und dient ausschließlich der Orientierung. Sie ersetzt keine rechtliche, steuerliche oder bautechnische Fachberatung. WAMOCON GmbH übernimmt keine Haftung für die Richtigkeit der KI-Ausgaben.",
     "short": "KI-generierte Analyse - keine Rechtsberatung"
   },
   "auth": {
-    "login_title": "Willkommen zurueck",
+    "login_title": "Willkommen zurück",
     "login_subtitle": "Melde dich bei deinem Auktivo-Konto an",
     "register_title": "Konto erstellen",
     "register_subtitle": "Kostenlos starten - keine Kreditkarte erforderlich",
     "email": "E-Mail-Adresse",
     "password": "Passwort",
-    "full_name": "Vollstaendiger Name",
+    "full_name": "Vollständiger Name",
     "login_button": "Anmelden",
     "register_button": "Konto erstellen",
     "forgot_password": "Passwort vergessen?",
@@ -137,15 +137,15 @@
     "has_account": "Bereits ein Konto?",
     "register_link": "Kostenlos registrieren",
     "login_link": "Jetzt anmelden",
-    "check_email": "Bitte pruefe deine E-Mails",
-    "check_email_desc": "Wir haben dir einen Bestaetigunslink gesendet.",
-    "reset_title": "Passwort zuruecksetzen",
+    "check_email": "Bitte prüfe deine E-Mails",
+    "check_email_desc": "Wir haben dir einen Bestätigungslink gesendet.",
+    "reset_title": "Passwort zurücksetzen",
     "reset_subtitle": "Gib deine E-Mail-Adresse ein. Wir senden dir einen Link.",
     "reset_button": "Link senden",
-    "reset_success": "Link wurde gesendet. Bitte pruefe deine E-Mails.",
+    "reset_success": "Link wurde gesendet. Bitte prüfe deine E-Mails.",
     "errors": {
-      "invalid_credentials": "Ungueltige E-Mail oder Passwort.",
-      "email_not_confirmed": "Bitte bestaetigue zuerst deine E-Mail-Adresse.",
+      "invalid_credentials": "Ungültige E-Mail oder Passwort.",
+      "email_not_confirmed": "Bitte bestätige zuerst deine E-Mail-Adresse.",
       "generic": "Ein Fehler ist aufgetreten. Bitte versuche es erneut."
     }
   },
@@ -176,7 +176,7 @@
       "house": "Haus",
       "apartment": "Wohnung",
       "commercial": "Gewerbe",
-      "land": "Grundstueck",
+      "land": "Grundstück",
       "other": "Sonstige"
     },
     "value_range": "Verkehrswert",
@@ -191,7 +191,7 @@
     "search_button": "Suchen",
     "results": "{count} Ergebnisse",
     "no_results": "Keine Objekte gefunden. Bitte erweitere die Suchkriterien.",
-    "limit_reached": "Suchlimit erreicht. Upgrade auf Pro fuer unbegrenzte Suchen.",
+    "limit_reached": "Suchlimit erreicht. Upgrade auf Pro für unbegrenzte Suchen.",
     "pro_filter_hint": "Pro-Feature",
     "loading": "Lade Ergebnisse..."
   },
@@ -201,7 +201,7 @@
     "file_number": "Aktenzeichen",
     "auction_date": "Versteigerungstermin",
     "market_value": "Verkehrswert",
-    "minimum_bid": "Mindestgebot (Richtwert 50%)",
+    "minimum_bid": "Mindestgebot (Richtwert 50 %)",
     "documents": "Originaldokumente",
     "download": "Herunterladen",
     "bid_now": "Zum ZVG-Portal",
@@ -218,24 +218,24 @@
     "risk_categories": {
       "baulasten": "Baulasten",
       "sanierungsbedarf": "Sanierungsbedarf",
-      "mietverhaeltnisse": "Mietverhaeltnisse",
+      "mietverhaeltnisse": "Mietverhältnisse",
       "grundbuchbelastungen": "Grundbuchbelastungen",
       "positive_signals": "Positive Aspekte"
     },
     "analysis_pending": "Analyse wird erstellt...",
-    "analysis_failed": "Analyse nicht verfuegbar",
-    "pro_required": "Fuer Pro-Nutzer verfuegbar",
+    "analysis_failed": "Analyse nicht verfügbar",
+    "pro_required": "Für Pro-Nutzer verfügbar",
     "unlock_analysis": "Analyse freischalten",
     "types": {
       "house": "Haus",
       "apartment": "Wohnung",
       "commercial": "Gewerbe",
-      "land": "Grundstueck",
+      "land": "Grundstück",
       "other": "Sonstiges"
     },
     "status": {
       "active": "Aktiv",
-      "withdrawn": "Zurueckgezogen",
+      "withdrawn": "Zurückgezogen",
       "sold": "Zugeschlagen"
     }
   },
@@ -248,7 +248,7 @@
     "disclaimer": "Alle Antworten ersetzen keine Fachberatung.",
     "examples": [
       "Was bedeutet diese Baulast konkret?",
-      "Wie hoch koennten die Sanierungskosten sein?",
+      "Wie hoch könnten die Sanierungskosten sein?",
       "Welche Risiken soll ich besonders beachten?",
       "Was ist eine Grundschuld und wie wirkt sie sich aus?"
     ],
@@ -260,14 +260,14 @@
     "subtitle": "Erhalte Benachrichtigungen bei neuen Objekten",
     "create": "Neuen Alarm erstellen",
     "name": "Alarmname",
-    "name_placeholder": "z.B. Muenchen Wohnungen",
+    "name_placeholder": "z.B. München Wohnungen",
     "zip_codes": "PLZ (kommagetrennt)",
     "save": "Alarm speichern",
     "no_alerts": "Noch kein Suchalarm. Erstelle deinen ersten Alarm.",
     "active": "Aktiv",
     "inactive": "Inaktiv",
-    "last_triggered": "Zuletzt ausgeloest",
-    "delete": "Loeschen",
+    "last_triggered": "Zuletzt ausgelöst",
+    "delete": "Löschen",
     "pro_required": "Suchwecker ist ein Pro-Feature",
     "zip": "PLZ",
     "radius": "Umkreis",
@@ -280,28 +280,94 @@
   },
   "profile": {
     "title": "Mein Profil",
-    "personal_data": "Persoenliche Daten",
+    "section_general": "Allgemein",
+    "section_personal": "Persönliche Daten",
+    "section_subscription": "Abonnement",
+    "section_notifications": "Benachrichtigungen",
+    "section_security": "Sicherheit",
+    "personal_data": "Persönliche Daten",
+    "account_type": "Kontotyp",
+    "account_type_private": "Privat",
+    "account_type_business": "Unternehmen",
+    "account_type_hint": "Wähle deinen Kontotyp für eine personalisierte Erfahrung.",
+    "company_name": "Firmenname",
+    "company_name_placeholder": "Mustermann GmbH",
+    "phone": "Telefonnummer",
+    "phone_placeholder": "+49 123 456789",
     "subscription": "Abonnement",
     "security": "Sicherheit",
     "privacy": "Datenschutz",
     "current_plan": "Aktueller Plan",
     "manage_subscription": "Abo verwalten",
     "export_data": "Daten exportieren",
-    "delete_account": "Konto loeschen",
-    "delete_confirm": "Konto wirklich loeschen? Alle Daten werden unwiderruflich geloescht.",
-    "save_changes": "Aenderungen speichern",
-    "change_password": "Passwort aendern",
-    "current_password": "Aktuelles Passwort",
+    "delete_account": "Konto löschen",
+    "delete_confirm": "Konto wirklich löschen? Alle Daten werden unwiderruflich gelöscht.",
+    "save_changes": "Änderungen speichern",
+    "saved_success": "Änderungen gespeichert.",
+    "change_password": "Passwort ändern",
     "new_password": "Neues Passwort",
+    "new_password_placeholder": "Mindestens 8 Zeichen",
+    "change_password_hint": "Lass das Feld leer, um das Passwort nicht zu ändern.",
+    "notifications": "Benachrichtigungen",
+    "email_notifications": "E-Mail-Benachrichtigungen",
+    "email_notifications_desc": "Benachrichtigungen über neue Objekte und Analysen",
     "plan_free": "Free",
     "plan_pro": "Pro",
-    "upgrade_hint": "Upgrade auf Pro fuer unbegrenzte Suchen und KI-Analyse.",
+    "upgrade_hint": "Upgrade auf Pro für unbegrenzte Suchen und KI-Analyse.",
     "name": "Name",
     "email": "E-Mail",
     "upgrade_to_pro": "Upgrade auf Pro",
     "data_privacy": "Datenschutz & DSGVO",
-    "gdpr_notice": "Du hast das Recht auf Datenauskunft, Berichtigung und Loeschung gemaess DSGVO Art. 15-17.",
-    "logout": "Abmelden"
+    "gdpr_notice": "Du hast das Recht auf Datenauskunft, Berichtigung und Löschung gemäß DSGVO Art. 15-17.",
+    "logout": "Abmelden",
+    "member_since": "Mitglied seit",
+    "searches_used": "Suchen diesen Monat",
+    "role_admin": "Administrator",
+    "role_user": "Nutzer"
+  },
+  "admin": {
+    "title": "Admin-Panel",
+    "nav_dashboard": "Übersicht",
+    "nav_users": "Nutzerverwaltung",
+    "nav_subscriptions": "Aboverwaltung",
+    "nav_crawler": "Crawler & Daten",
+    "nav_settings": "App-Einstellungen",
+    "stats_users": "Nutzer gesamt",
+    "stats_pro": "Pro-Nutzer",
+    "stats_properties": "Objekte im System",
+    "stats_analyses": "KI-Analysen",
+    "recent_users": "Neue Nutzer",
+    "crawler_runs": "Crawler-Läufe",
+    "trigger_crawler": "Crawler jetzt starten",
+    "crawler_running": "Crawler läuft...",
+    "crawler_success": "Crawler erfolgreich gestartet",
+    "crawler_error": "Fehler beim Starten des Crawlers",
+    "user_table_name": "Name",
+    "user_table_email": "E-Mail",
+    "user_table_plan": "Plan",
+    "user_table_type": "Typ",
+    "user_table_joined": "Registriert",
+    "user_table_actions": "Aktionen",
+    "user_promote_admin": "Zum Admin machen",
+    "user_revoke_admin": "Admin-Rechte entziehen",
+    "user_upgrade_pro": "Auf Pro upgraden",
+    "user_downgrade_free": "Auf Free downgraden",
+    "subscription_status": "Abo-Status",
+    "subscription_active": "Aktiv",
+    "subscription_inactive": "Inaktiv",
+    "subscription_cancelled": "Gekündigt",
+    "app_settings": "App-Einstellungen",
+    "maintenance_mode": "Wartungsmodus",
+    "maintenance_mode_desc": "Deaktiviert den Zugang für alle Nicht-Admins",
+    "crawler_schedule": "Crawler-Zeitplan",
+    "last_run": "Letzter Lauf",
+    "next_run": "Nächster Lauf",
+    "run_status_running": "Läuft",
+    "run_status_completed": "Abgeschlossen",
+    "run_status_failed": "Fehlgeschlagen",
+    "properties_found": "Objekte gefunden",
+    "new_properties": "Neue Objekte",
+    "duration": "Dauer"
   },
   "footer": {
     "company": "WAMOCON GmbH",
@@ -324,17 +390,17 @@
     "server_error_desc": "Ein unerwarteter Fehler ist aufgetreten.",
     "server_error_message": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.",
     "go_home": "Zur Startseite",
-    "go_back": "Zurueck",
+    "go_back": "Zurück",
     "try_again": "Erneut versuchen"
   },
   "common": {
     "loading": "Laden...",
     "save": "Speichern",
     "cancel": "Abbrechen",
-    "delete": "Loeschen",
+    "delete": "Löschen",
     "edit": "Bearbeiten",
-    "close": "Schliessen",
-    "back": "Zurueck",
+    "close": "Schließen",
+    "back": "Zurück",
     "next": "Weiter",
     "yes": "Ja",
     "no": "Nein",
@@ -345,16 +411,16 @@
     "beta": "Beta"
   },
   "faq": {
-    "title": "Haeufige Fragen",
+    "title": "Häufige Fragen",
     "q1": "Was ist eine Zwangsversteigerung?",
-    "a1": "Eine Zwangsversteigerung ist ein gerichtliches Verfahren, bei dem Immobilien von Schuldnern zwangsweise verkauft werden, um Glaubigeransprueche zu befriedigen. Amtsgerichte koordinieren das Verfahren und veroeffentlichen Termine auf zvg-portal.de.",
+    "a1": "Eine Zwangsversteigerung ist ein gerichtliches Verfahren, bei dem Immobilien von Schuldnern zwangsweise verkauft werden, um Gläubigeransprüche zu befriedigen. Amtsgerichte koordinieren das Verfahren und veröffentlichen Termine auf zvg-portal.de.",
     "q2": "Wie sicher sind die KI-Analysen?",
     "a2": "Unsere KI MAX analysiert die Gutachten mit einem konservativ eingestellten Ansatz - lieber zu viele Warnungen als zu wenige. Die Analysen sind eine erste Orientierung, ersetzen aber keine professionelle Fachberatung.",
     "q3": "Welche Dokumente werden analysiert?",
-    "a3": "Auktivo liest alle vom ZVG-Portal verlinkten PDF- und TIF-Gutachten per OCR aus und uebergibt den Text an unsere KI MAX.",
-    "q4": "Kann ich jederzeit kuendigen?",
-    "a4": "Ja, vollstaendig selbststaendig im Profil ohne Supportkontakt. Dein Zugang bleibt bis Ende des bezahlten Monats aktiv.",
+    "a3": "Auktivo liest alle vom ZVG-Portal verlinkten PDF- und TIF-Gutachten per OCR aus und übergibt den Text an unsere KI MAX.",
+    "q4": "Kann ich jederzeit kündigen?",
+    "a4": "Ja, vollständig selbstständig im Profil ohne Supportkontakt. Dein Zugang bleibt bis Ende des bezahlten Monats aktiv.",
     "q5": "Sind meine Daten DSGVO-konform gespeichert?",
-    "a5": "Ja. Alle Daten werden auf Supabase-Servern in der EU (Frankfurt) gespeichert. Du kannst deine Daten jederzeit exportieren oder dein Konto loeschen."
+    "a5": "Ja. Alle Daten werden auf Supabase-Servern in der EU (Frankfurt) gespeichert. Du kannst deine Daten jederzeit exportieren oder dein Konto löschen."
   }
 }

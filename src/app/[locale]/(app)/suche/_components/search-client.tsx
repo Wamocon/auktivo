@@ -9,7 +9,7 @@ import { daysUntil } from "@/lib/utils/date";
 import type { Profile, PropertyWithAnalysis, RiskLevel, PropertyType } from "@/lib/types/database";
 
 interface SearchClientProps {
-  profile: Profile;
+  profile: Profile | null;
   locale: string;
 }
 
@@ -90,7 +90,7 @@ function PropertyCard({ property, locale }: { property: PropertyWithAnalysis; lo
 
 export function SearchClient({ profile, locale }: SearchClientProps) {
   const t = useTranslations("search");
-  const isPro = profile.plan === "pro";
+  const isPro = profile?.plan === "pro";
 
   const [zip, setZip] = useState("");
   const [radius, setRadius] = useState<number>(25);
@@ -193,14 +193,14 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
             </div>
 
             <div className="relative">
-              <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 {t("risk_level")}
                 {!isPro && <Lock className="h-3 w-3 text-zinc-300" />}
-              </label>
+              </p>
               <div className={`flex flex-col gap-2 ${!isPro ? "pointer-events-none opacity-30" : ""}`}>
                 {(["low", "medium", "high", "critical"] as RiskLevel[]).map((level) => (
                   <label key={level} className="flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" disabled={!isPro} className="h-4 w-4 rounded border-zinc-300 text-brand-500" />
+                    <input type="checkbox" aria-label={level} disabled={!isPro} className="h-4 w-4 rounded border-zinc-300 text-brand-500" />
                     <RiskBadge level={level} />
                   </label>
                 ))}
@@ -226,12 +226,12 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
         {!isPro && (
           <div className="mt-3 rounded-xl border-l-4 border-amber-400 bg-amber-50 p-3.5 dark:border-amber-500/50 dark:bg-amber-900/10">
             <p className="mb-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
-              {profile.monthly_search_count} / 5 Suchen diesen Monat
+              {profile?.monthly_search_count ?? 0} / 5 Suchen diesen Monat
             </p>
             <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/40">
               <div
                 className="h-full rounded-full bg-amber-500"
-                style={{ width: `${Math.min(100, (profile.monthly_search_count / 5) * 100)}%` }}
+                ref={(el) => { if (el) el.style.width = `${Math.min(100, ((profile?.monthly_search_count ?? 0) / 5) * 100)}%`; }}
               />
             </div>
             <Link href="/upgrade" className="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400">

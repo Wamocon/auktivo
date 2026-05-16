@@ -1,0 +1,9 @@
+[getProfile] DB error: No suitable key or wrong key type PGRST301 No suitable key was found to decode the JWT
+checkSearchLimit error: {
+  code: 'PGRST301',
+  details: 'None of the keys was able to decode the JWT',
+  hint: null,
+  message: 'No suitable key or wrong key type'
+}
+[getProfile] DB error: No suitable key or wrong key type PGRST301 No suitable key was found to decode the JWT
+[getProfile] DB error: No suitable key or wrong key type PGRST301 No suitable key was found to decode the JWT

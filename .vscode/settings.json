@@ -1,0 +1,6 @@
+{
+  "files.associations": {
+    "**/scripts/rename-schemas.sql": "plaintext",
+    "**/supabase/setup_all_schemas.sql": "plaintext"
+  }
+}

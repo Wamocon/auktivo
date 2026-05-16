@@ -1,0 +1,5 @@
+{
+  "rules": {
+    "aria-valid-attr-value": "off"
+  }
+}

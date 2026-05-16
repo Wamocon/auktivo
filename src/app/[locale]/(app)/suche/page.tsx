@@ -16,11 +16,13 @@ export default async function SuchePage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/${locale}/login`);
 
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .single();
+
+  const profile = (profileData ?? { id: user.id, email: user.email ?? "", plan: "free", is_admin: false }) as Profile;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">

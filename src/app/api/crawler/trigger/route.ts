@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { runCrawler } from "@/lib/crawler/runner";
 
 export async function POST() {
   const headersList = await headers();
@@ -11,21 +11,12 @@ export async function POST() {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
-  const admin = createAdminClient();
+  // Crawler asynchron starten - Response sofort zurueckgeben
+  // damit Vercel Cron nicht in den Timeout laeuft
+  runCrawler().catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[API/crawler/trigger] Crawler-Fehler:", msg);
+  });
 
-  // Neuen Crawler-Lauf starten
-  const { data: run } = await admin
-    .from("crawler_runs")
-    .insert({
-      status: "running",
-      started_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  // Hier wird der externe Python-Playwright-Crawler ausgeloest.
-  // In Produktion: HTTP-Request an den Crawler-Service oder Vercel Cron Job.
-  console.log(`Crawler run ${run?.id} started`);
-
-  return NextResponse.json({ runId: run?.id, status: "started" });
+  return NextResponse.json({ status: "started" });
 }

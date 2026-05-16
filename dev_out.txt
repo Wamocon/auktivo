@@ -1,0 +1,17 @@
+
+> auktivo@0.1.0 dev
+> next dev --turbopack
+
+▲ Next.js 16.2.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.172:3000
+- Environments: .env.local
+✓ Ready in 268ms
+[Instrumentation] Crawler auto-start disabled. Set CRAWLER_AUTO_START=true to enable.
+
+ GET /api/search?zip=60488&radius=25 200 in 4.4s (next.js: 819ms, application-code: 3.6s)
+ GET /de/suche 200 in 7.5s (next.js: 2.1s, proxy.ts: 151ms, generate-params: 1073ms, application-code: 5.3s)
+ GET /de/suche 200 in 2.1s (next.js: 59ms, proxy.ts: 91ms, generate-params: 7ms, application-code: 1905ms)
+ GET /de/suche 200 in 1415ms (next.js: 163ms, proxy.ts: 28ms, generate-params: 9ms, application-code: 1224ms)
+ GET /de 200 in 9.9s (next.js: 6.3s, proxy.ts: 2.3s, generate-params: 1301ms, application-code: 1299ms)
+[?25h

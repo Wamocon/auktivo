@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import type { Profile } from "@/lib/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "@/i18n/navigation";
-import { Menu, X, ChevronRight } from "lucide-react";
+import { Menu, X, ChevronRight, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 
 interface HeaderProps {
@@ -30,12 +30,13 @@ export function Header({ profile, locale }: HeaderProps) {
 
   const isLoggedIn = !!profile;
   const isPro = profile?.plan === "pro";
+  const isAdmin = profile?.is_admin === true;
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/95 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-950/95">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Logo */}
-        <Link href="/" locale={locale} className="flex-shrink-0">
+        <Link href="/" locale={locale} className="shrink-0">
           <AuktivoLogo className="h-7 w-auto" />
         </Link>
 
@@ -49,6 +50,14 @@ export function Header({ profile, locale }: HeaderProps) {
               <Link href="/suche" locale={locale} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
                 {t("search")}
               </Link>
+              {isAdmin && (
+                <a
+                  href={`/${locale}/admin/dashboard`}
+                  className="flex items-center gap-1 rounded-md bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                >
+                  <ShieldAlert className="h-3 w-3" /> {t("admin")}
+                </a>
+              )}
               {!isPro && (
                 <Link
                   href="/upgrade"
@@ -128,6 +137,9 @@ export function Header({ profile, locale }: HeaderProps) {
               <>
                 <Link href="/dashboard" locale={locale} className="text-sm font-medium" onClick={() => setMenuOpen(false)}>{t("dashboard")}</Link>
                 <Link href="/profil" locale={locale} className="text-sm font-medium" onClick={() => setMenuOpen(false)}>{t("profile")}</Link>
+                {isAdmin && (
+                  <a href={`/${locale}/admin/dashboard`} className="text-sm font-semibold text-red-600" onClick={() => setMenuOpen(false)}>{t("admin")}</a>
+                )}
                 <button onClick={handleLogout} className="text-left text-sm font-medium text-red-600">{t("logout")}</button>
               </>
             ) : (

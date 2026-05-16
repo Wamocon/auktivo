@@ -40,6 +40,15 @@ describe("getStripe", () => {
       typescript: true,
     }));
   });
+
+  it("gibt gecachte Instanz beim zweiten Aufruf zurueck (Singleton)", () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_12345");
+    const first = stripeModule.getStripe();
+    const second = stripeModule.getStripe();
+    // Stripe-Konstruktor nur einmal aufgerufen - Singleton-Cache greift
+    expect(StripeMock).toHaveBeenCalledTimes(1);
+    expect(first).toBe(second);
+  });
 });
 
 describe("createCheckoutSession", () => {

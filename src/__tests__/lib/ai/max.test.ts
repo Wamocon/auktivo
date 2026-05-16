@@ -10,6 +10,42 @@ const OpenAIMock = vi.hoisted(() =>
 
 vi.mock("openai", () => ({ default: OpenAIMock }));
 
+describe("getMaxClient Singleton", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  it("erstellt OpenAI-Client nur einmal (Singleton-Cache greift beim zweiten Aufruf)", async () => {
+    // Beide analyzeProperty-Aufrufe teilen sich denselben _maxClient
+    const mockResult = {
+      risk_level: "low" as const,
+      summary: "",
+      baulasten: [],
+      sanierungsbedarf: [],
+      mietverhaeltnisse: [],
+      grundbuchbelastungen: [],
+      positive_signals: [],
+      disclaimer: "",
+    };
+    mockCompletionsCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(mockResult) } }],
+    });
+
+    // Gleiche Modul-Instanz ohne resetModules dazwischen
+    const { analyzeProperty } = await import("@/lib/ai/max");
+
+    await analyzeProperty("Text1", { court: "AG Test" });
+    await analyzeProperty("Text2", { court: "AG Test" });
+
+    // OpenAI-Konstruktor nur EINMAL aufgerufen - Singleton-Cache hat gegriffen
+    expect(OpenAIMock).toHaveBeenCalledTimes(1);
+    // completions.create aber zweimal - beide Analysen wurden ausgeführt
+    expect(mockCompletionsCreate).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("MAX_MODEL", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
