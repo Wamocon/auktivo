@@ -211,16 +211,18 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                 />
               ) : (
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-zinc-400">Versteigerungstermin</span>
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Noch nicht bekannt gegeben</span>
-                  <a
-                    href={zvgPortalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Termin auf ZVG-Portal pruefen
-                  </a>
+                  <dt className="text-xs font-medium text-zinc-400">Versteigerungstermin</dt>
+                  <dd className="text-sm text-zinc-500 dark:text-zinc-400">Noch nicht bekannt gegeben</dd>
+                  <dd>
+                    <a
+                      href={zvgPortalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Termin auf ZVG-Portal pruefen
+                    </a>
+                  </dd>
                 </div>
               )}
               <DataRow label="Status" value={formatStatus(p.status)} />
@@ -836,8 +838,8 @@ function DataRow({ label, value, mono = false }: { label: string; value: string 
   if (!value) return null;
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-xs font-medium text-zinc-400">{label}</span>
-      <span className={`text-sm text-zinc-800 dark:text-zinc-200 ${mono ? "font-mono" : ""}`}>{value}</span>
+      <dt className="text-xs font-medium text-zinc-400">{label}</dt>
+      <dd className={`text-sm text-zinc-800 dark:text-zinc-200 ${mono ? "font-mono" : ""}`}>{value}</dd>
     </div>
   );
 }

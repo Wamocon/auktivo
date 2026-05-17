@@ -362,14 +362,14 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </label>
               <div className="flex flex-col gap-2">
                 <div>
-                  <span className="mb-0.5 block text-[10px] text-zinc-400">{t("termin_von")}</span>
+                  <label className="mb-0.5 block text-[10px] text-zinc-400">{t("termin_von")}
                   <input type="date" value={terminVon} onChange={(e) => setTerminVon(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" />
+                    className="mt-0.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" /></label>
                 </div>
                 <div>
-                  <span className="mb-0.5 block text-[10px] text-zinc-400">{t("termin_bis")}</span>
+                  <label className="mb-0.5 block text-[10px] text-zinc-400">{t("termin_bis")}
                   <input type="date" value={terminBis} onChange={(e) => setTerminBis(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" />
+                    className="mt-0.5 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" /></label>
                 </div>
               </div>
             </div>
@@ -456,6 +456,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
+                  aria-label={t("sort_label")}
                   className="bg-transparent text-xs text-zinc-700 outline-none dark:text-zinc-300"
                 >
                   <option value="auction_date_asc">{t("sort_date_asc")}</option>

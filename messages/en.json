@@ -205,6 +205,7 @@
     "upgrade_pro": "Upgrade to Pro",
     "clear_filters": "Clear filters",
     "all_objects_count": "{count} properties total",
+    "sort_label": "Sort by",
     "sort_date_asc": "Date ascending",
     "sort_date_desc": "Date descending",
     "sort_price_asc": "Price ascending",

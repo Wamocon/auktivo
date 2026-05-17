@@ -207,6 +207,7 @@
     "upgrade_pro": "Upgrade auf Pro",
     "clear_filters": "Filter zurücksetzen",
     "all_objects_count": "{count} Objekte gesamt",
+    "sort_label": "Sortierung",
     "sort_date_asc": "Termin aufsteigend",
     "sort_date_desc": "Termin absteigend",
     "sort_price_asc": "Preis aufsteigend",

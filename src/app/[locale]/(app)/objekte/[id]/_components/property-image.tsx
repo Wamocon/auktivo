@@ -67,7 +67,7 @@ export function PropertyImage({ property: p, docImages = [] }: Props) {
 
   if (config.type === "placeholder") {
     return (
-      <div className="mb-0 flex h-40 items-center justify-center rounded-t-2xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700">
+      <div className="mb-0 flex h-40 items-center justify-center rounded-t-2xl bg-linear-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700">
         <div className="text-center">
           <span className="text-5xl opacity-40">{typeIcon}</span>
           <p className="mt-2 text-xs text-zinc-400">Keine Bildvorschau verfuegbar</p>
@@ -95,7 +95,7 @@ export function PropertyImage({ property: p, docImages = [] }: Props) {
         </span>
       </div>
       {/* Gradient-Fade nach unten fuer weichen Uebergang zur Karte */}
-      <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white dark:from-zinc-900" />
+      <div className="absolute inset-x-0 bottom-0 h-12 bg-linear-to-t from-white dark:from-zinc-900" />
     </div>
   );
 }
