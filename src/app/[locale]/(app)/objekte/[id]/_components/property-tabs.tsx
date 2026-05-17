@@ -456,9 +456,47 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
           ) : (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">KI-Risikoanalyse</h3>
+                <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  {a.analysis_model === "algorithmic-fallback" ? "Algorithmische Auswertung" : "KI-Risikoanalyse"}
+                </h3>
                 {a.risk_level && <RiskBadge level={a.risk_level} />}
               </div>
+
+              {/* Fallback-Banner wenn KI nicht erreichbar war */}
+              {a.analysis_model === "algorithmic-fallback" && (
+                <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                        KI nicht erreichbar - Algorithmische Auswertung
+                      </p>
+                      <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                        Der KI-Dienst war zum Analysezeitpunkt nicht verfuegbar. Diese Auswertung basiert auf
+                        einer Schlagwortsuche im OCR-Text und ist weniger praezise als eine vollstaendige KI-Analyse.
+                        Bitte starten Sie die Analyse erneut, sobald der Dienst verfuegbar ist.
+                      </p>
+                    </div>
+                  </div>
+                  {triggerMsg ? (
+                    <p className="rounded-lg bg-amber-100 px-3 py-2 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                      {triggerMsg}
+                    </p>
+                  ) : (
+                    <button
+                      onClick={triggerAnalysis}
+                      disabled={triggering}
+                      className="flex w-fit items-center gap-2 rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+                    >
+                      {triggering ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> KI-Analyse wird gestartet...</>
+                      ) : (
+                        <><RefreshCw className="h-3.5 w-3.5" /> KI-Analyse jetzt starten</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {a.summary && (
                 <div className="mb-5 rounded-xl bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canAccess } from "@/lib/feature-gate";
-import { analyzeProperty } from "@/lib/ai/max";
+import { analyzeProperty, analyzePropertyFallback } from "@/lib/ai/max";
 
 export async function POST(
   request: Request,
@@ -41,7 +41,7 @@ export async function POST(
     .eq("property_id", propertyId)
     .single();
 
-  if (existingAnalysis?.analysis_status === "done") {
+  if (existingAnalysis?.analysis_status === "done" && existingAnalysis.analysis_model !== "algorithmic-fallback") {
     return NextResponse.json({ analysis: existingAnalysis });
   }
 
@@ -101,13 +101,49 @@ export async function POST(
     return NextResponse.json({ analysis });
   } catch (error) {
     console.error("AI analysis error:", error);
-    await admin
-      .from("property_analyses")
-      .upsert({
-        property_id: propertyId,
-        analysis_status: "failed",
-        error_message: String(error),
+
+    // Algorithmischen Fallback ausfuehren wenn KI nicht erreichbar
+    try {
+      const fallbackResult = analyzePropertyFallback(ocrText, {
+        court: property.court,
+        market_value: property.market_value,
+        city: property.city,
       });
-    return NextResponse.json({ error: "KI-Analyse fehlgeschlagen" }, { status: 500 });
+
+      const { data: fallbackAnalysis } = await admin
+        .from("property_analyses")
+        .upsert({
+          property_id: propertyId,
+          risk_level: fallbackResult.risk_level,
+          risk_signals: {
+            baulasten: fallbackResult.baulasten,
+            sanierungsbedarf: fallbackResult.sanierungsbedarf,
+            mietverhaeltnisse: fallbackResult.mietverhaeltnisse,
+            grundbuchbelastungen: fallbackResult.grundbuchbelastungen,
+            positive_signals: fallbackResult.positive_signals,
+            disclaimer: fallbackResult.disclaimer,
+          },
+          summary: fallbackResult.summary,
+          analysis_model: "algorithmic-fallback",
+          prompt_version: "v1.0-fallback",
+          analysis_status: "done",
+          analyzed_at: new Date().toISOString(),
+          error_message: `KI nicht erreichbar: ${String(error)}`,
+        })
+        .select()
+        .single();
+
+      return NextResponse.json({ analysis: fallbackAnalysis, fallback: true });
+    } catch (fallbackError) {
+      console.error("Fallback analysis error:", fallbackError);
+      await admin
+        .from("property_analyses")
+        .upsert({
+          property_id: propertyId,
+          analysis_status: "failed",
+          error_message: String(error),
+        });
+      return NextResponse.json({ error: "KI-Analyse fehlgeschlagen" }, { status: 500 });
+    }
   }
 }
