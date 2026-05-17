@@ -79,13 +79,18 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
     setFetchDocResult(null);
     try {
       const res = await fetch(`/api/properties/${p.id}/fetch-documents`, { method: "POST" });
-      const data = await res.json() as { count?: number; total?: number; errors?: string[]; error?: string; message?: string };
+      // Bei Server-Fehler (500) kommt HTML statt JSON - sicher parsen
+      let data: { count?: number; total?: number; failed?: number; errors?: string[]; error?: string; message?: string } = {};
+      try {
+        data = await res.json() as typeof data;
+      } catch {
+        data = { error: `Server-Fehler (HTTP ${res.status})` };
+      }
       if (!res.ok) {
         setFetchDocResult({ count: 0, total: 0, errors: [data.error ?? `HTTP ${res.status}`] });
       } else {
         setFetchDocResult({ count: data.count ?? 0, total: data.total ?? 0, errors: data.errors });
         if ((data.count ?? 0) > 0) {
-          // Seite neu laden damit Dokumente sichtbar werden
           router.refresh();
         }
       }

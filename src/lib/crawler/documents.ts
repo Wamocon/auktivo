@@ -13,9 +13,39 @@ const MAX_PDF_BYTES = 52_428_800;
 // Timeout pro Dokument-Download
 const DOWNLOAD_TIMEOUT_MS = 45_000;
 
-// pdf-parse ist ein CJS-Modul - require() umgeht ESM-Default-Export-Problem
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
+/**
+ * Minimale Canvas-API-Polyfills damit pdf-parse (pdfjs-dist) in Node.js laden kann.
+ * pdfjs-dist versucht Canvas fuer Rendering zu nutzen - fuer reine Text-Extraktion
+ * reichen leere Stub-Klassen. Ohne diese Polyfills crasht die Modul-Initialisierung
+ * mit "ReferenceError: DOMMatrix is not defined".
+ */
+function ensureCanvasPolyfills() {
+  const g = globalThis as Record<string, unknown>;
+  if (!g["DOMMatrix"]) {
+    g["DOMMatrix"] = class DOMMatrix {
+      a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
+      is2D = true; isIdentity = true;
+    };
+  }
+  if (!g["Path2D"]) g["Path2D"] = class Path2D {};
+  if (!g["ImageData"]) {
+    g["ImageData"] = class ImageData {
+      constructor(public data: Uint8ClampedArray, public width: number, public height: number) {}
+    };
+  }
+}
+
+/** Lazy-geladene pdf-parse Instanz (erst beim ersten Aufruf initialisiert). */
+let _pdfParse: ((buffer: Buffer) => Promise<{ text: string; numpages: number }>) | null = null;
+
+function getPdfParse() {
+  if (!_pdfParse) {
+    ensureCanvasPolyfills();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
+  }
+  return _pdfParse;
+}
 
 export interface PdfDownloadResult {
   /** Wurde das Dokument erfolgreich gespeichert? */
@@ -91,7 +121,7 @@ export async function downloadAndStorePdf(
     let ocrText = "";
     let pageCount = 0;
     try {
-      const parsed = await pdfParse(Buffer.from(buffer));
+      const parsed = await getPdfParse()(Buffer.from(buffer));
       ocrText = (parsed.text ?? "").trim();
       pageCount = parsed.numpages ?? 0;
     } catch {

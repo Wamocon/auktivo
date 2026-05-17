@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AiDisclaimer } from "@/components/ui/ai-disclaimer";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { PropertyTabs } from "./_components/property-tabs";
+import { PropertyImage } from "./_components/property-image";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
@@ -39,8 +40,8 @@ export default async function PropertyDetailPage({
   const a = analysis as PropertyAnalysis | null;
   const docs = (documents ?? []) as PropertyDocument[];
 
-  // ZVG-Objekt-URL aus zvg_id aufbauen
-  const zvgParts = (p.zvg_id ?? "").split("-");
+  // ZVG-Objekt-URL aus zvg_id aufbauen (Format: "NW-1234" oder "NW_1234")
+  const zvgParts = (p.zvg_id ?? "").split(/[-_]/);
   const zvgLand = (zvgParts[0] ?? p.land_abk ?? "").toLowerCase();
   const zvgNumId = zvgParts[1] ?? "";
   const zvgDirectUrl = zvgNumId && zvgLand
@@ -68,7 +69,9 @@ export default async function PropertyDetailPage({
         {/* Hauptbereich mit Tabs */}
         <div className="lg:col-span-2">
           {/* Objekt-Header */}
-          <div className="mb-6 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <PropertyImage property={p} />
+            <div className="p-6">
             <div className="mb-4 flex flex-wrap items-start gap-3">
               <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                 {t(`types.${p.property_type ?? "other"}` as Parameters<typeof t>[0])}
@@ -177,7 +180,8 @@ export default async function PropertyDetailPage({
                 </div>
               )}
             </div>
-          </div>
+            </div>{/* end p-6 */}
+          </div>{/* end header card */}
 
           {/* Tabs-Bereich */}
           <PropertyTabs
