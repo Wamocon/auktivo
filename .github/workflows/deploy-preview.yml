@@ -1,29 +1,17 @@
 name: Deploy - Preview (Vercel)
 
-# Laeuft bei Pull Requests gegen main oder manuell
-# Vermeidet Doppel-Ausfuehrung: Push-Trigger (Tests) laeuft separat
+# Laeuft bei jedem Push auf einen Branch ausser main
 on:
-  pull_request:
-    branches:
+  push:
+    branches-ignore:
       - main
-    types:
-      - opened
-      - synchronize
-      - reopened
   workflow_dispatch:
-    inputs:
-      ref:
-        description: "Branch oder Commit fuer Preview-Deploy"
-        required: false
-        default: ""
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
 
 concurrency:
-  group: deploy-preview-${{ github.event.pull_request.number || github.run_id }}
+  group: deploy-preview-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -60,18 +48,5 @@ jobs:
           url=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
           echo "preview_url=$url" >> "$GITHUB_OUTPUT"
 
-      - name: Comment preview URL on PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '### Vercel Preview Deployment\n\nPreview URL: ${{ steps.deploy.outputs.preview_url }}'
-            });
-
-      - name: Print preview URL (manueller Trigger)
-        if: github.event_name == 'workflow_dispatch'
+      - name: Print preview URL
         run: echo "Preview URL ${{ steps.deploy.outputs.preview_url }}"

@@ -1,10 +1,9 @@
 name: Deploy - Production (Vercel)
 
-# Laeuft bei Merge (push) in main oder manuell
+# Laeuft bei veroeffentlichtem GitHub Release oder manuell
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
