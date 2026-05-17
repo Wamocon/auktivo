@@ -22,7 +22,14 @@ function getAllowedTargetUrl(rawUrl: string): URL | null {
     // Keine Credentials in Ziel-URLs zulassen
     if (parsed.username || parsed.password) return null;
 
-    return parsed;
+    // Nur HTTPS-Standardport erlauben (kein internes Port-Scanning)
+    if (parsed.port && parsed.port !== "443") return null;
+
+    // Ziel-URL kanonisch aus validierten Bestandteilen neu aufbauen
+    const safeUrl = new URL(`https://${normalizedHostname}${parsed.pathname}${parsed.search}`);
+    safeUrl.hash = "";
+
+    return safeUrl;
   } catch {
     return null;
   }
