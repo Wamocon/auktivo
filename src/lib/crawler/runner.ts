@@ -387,7 +387,7 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[Crawler] Fehler bei ${land.name}:`, message);
       totalErrors++;
-      setCrawlerProgress({ errors: totalErrors, lastError: message });
+      setCrawlerProgress({ errors: totalErrors, lastError: message, lastErrorLand: land.name });
     }
 
     setCrawlerProgress({ processedLaender: BUNDESLAENDER.indexOf(land) + 1 });

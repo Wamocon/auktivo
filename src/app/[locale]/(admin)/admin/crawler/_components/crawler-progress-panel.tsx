@@ -28,6 +28,7 @@ interface CrawlerProgress {
   insertedProperties: number;
   errors: number;
   lastError: string | null;
+  lastErrorLand: string | null;
 }
 
 function formatDuration(startedAt: string | null, finishedAt?: string | null): string {
@@ -308,9 +309,25 @@ export function CrawlerProgressPanel() {
           </div>
 
           {progress.lastError && (
-            <div className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300">
-              <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {progress.lastError}
+            <div
+              className={
+                isRunning || isPaused
+                  ? "flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-300"
+                  : "flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-300"
+              }
+            >
+              {isRunning || isPaused ? (
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              )}
+              <span>
+                {progress.lastErrorLand ? (
+                  <><strong>{progress.lastErrorLand}:</strong> {progress.lastError} — Crawler läuft weiter</>
+                ) : (
+                  progress.lastError
+                )}
+              </span>
             </div>
           )}
         </>

@@ -17,6 +17,7 @@ export interface CrawlerProgress {
   insertedProperties: number;
   errors: number;
   lastError: string | null;
+  lastErrorLand: string | null;
 }
 
 const initial: CrawlerProgress = {
@@ -32,6 +33,7 @@ const initial: CrawlerProgress = {
   insertedProperties: 0,
   errors: 0,
   lastError: null,
+  lastErrorLand: null,
 };
 
 // Globales Singleton - überlebt zwischen Requests im selben Prozess
