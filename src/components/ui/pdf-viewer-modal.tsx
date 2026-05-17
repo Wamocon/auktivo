@@ -15,7 +15,34 @@ export function PdfViewerModal({ url, fileName, onClose }: PdfViewerModalProps) 
   const [error, setError] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const proxyUrl = `/api/proxy/pdf?url=${encodeURIComponent(url)}`;
+  /**
+   * URL-Strategie (SSRF-sicher):
+   * - Supabase Storage → direkt verwenden (oeffentlich zugaenglich, kein Proxy noetig)
+   * - ZVG-Portal       → nur file_id + land_abk extrahieren, Proxy baut URL server-seitig
+   * - Sonstiges        → direkt (kein Proxy)
+   */
+  function buildViewUrl(rawUrl: string): string {
+    // Supabase Storage ist oeffentlich - kein Proxy
+    if (rawUrl.includes(".supabase.co/storage/")) return rawUrl;
+
+    // ZVG-Portal: file_id und land_abk extrahieren, keine URL weiterleiten
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.hostname.includes("zvg-portal.de")) {
+        const fileId = parsed.searchParams.get("file_id") ?? "";
+        const landAbk = parsed.searchParams.get("land_abk") ?? "";
+        if (/^\d{1,10}$/.test(fileId) && /^[a-z]{2,3}$/i.test(landAbk)) {
+          return `/api/proxy/pdf?file_id=${encodeURIComponent(fileId)}&land_abk=${encodeURIComponent(landAbk)}`;
+        }
+      }
+    } catch {
+      // URL nicht parsebar
+    }
+
+    return rawUrl;
+  }
+
+  const viewUrl = buildViewUrl(url);
 
   // ESC-Taste schliessen
   useEffect(() => {
@@ -57,7 +84,7 @@ export function PdfViewerModal({ url, fileName, onClose }: PdfViewerModalProps) 
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <a
-              href={proxyUrl}
+              href={viewUrl}
               download={fileName}
               className="flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
               title="Herunterladen"
@@ -111,7 +138,7 @@ export function PdfViewerModal({ url, fileName, onClose }: PdfViewerModalProps) 
             </div>
           ) : (
             <iframe
-              src={proxyUrl}
+              src={viewUrl}
               className="h-full w-full"
               title={fileName}
               onLoad={() => setLoading(false)}

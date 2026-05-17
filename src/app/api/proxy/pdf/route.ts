@@ -1,44 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// Erlaubte Domains fuer den PDF-Proxy (Sicherheit: kein Open Redirect)
-const ALLOWED_HOSTS = [
-  "www.zvg-portal.de",
-  "zvg-portal.de",
-  "justiz.de",
-  "justizministerium.de",
-  "einsichten-online.de",
-];
+/**
+ * PDF-Proxy fuer ZVG-Portal-Dokumente.
+ *
+ * SICHERHEIT (SSRF-Schutz):
+ * Akzeptiert KEINE URL vom Client. Stattdessen werden nur `file_id` (numerisch)
+ * und `land_abk` (2-3 Buchstaben) entgegengenommen und die Ziel-URL vollstaendig
+ * server-seitig aus einem festen Template aufgebaut.
+ * Supabase-Storage-Dokumente sind oeffentlich und brauchen keinen Proxy.
+ *
+ * Usage: GET /api/proxy/pdf?file_id=12345&land_abk=nw
+ */
 
-function getAllowedTargetUrl(rawUrl: string): URL | null {
-  try {
-    const parsed = new URL(rawUrl);
-
-    if (parsed.protocol !== "https:") return null;
-
-    const normalizedHostname = parsed.hostname.toLowerCase();
-
-    // Supabase Storage URLs erlauben (fuer gespeicherte Dokumente in property-docs Bucket)
-    const isSupabaseStorage = normalizedHostname.endsWith(".supabase.co");
-    const isAllowedHost = ALLOWED_HOSTS.includes(normalizedHostname);
-
-    if (!isAllowedHost && !isSupabaseStorage) return null;
-
-    // Keine Credentials in Ziel-URLs zulassen
-    if (parsed.username || parsed.password) return null;
-
-    // Nur HTTPS-Standardport erlauben (kein internes Port-Scanning)
-    if (parsed.port && parsed.port !== "443") return null;
-
-    // Ziel-URL kanonisch aus validierten Bestandteilen neu aufbauen
-    const safeUrl = new URL(`https://${normalizedHostname}${parsed.pathname}${parsed.search}`);
-    safeUrl.hash = "";
-
-    return safeUrl;
-  } catch {
-    return null;
-  }
-}
+/** Validierung: nur Ziffern */
+const FILE_ID_RE = /^\d{1,10}$/;
+/** Validierung: 2-3 lateinische Buchstaben (Bundesland-Kuerzel) */
+const LAND_ABK_RE = /^[a-z]{2,3}$/i;
 
 export async function GET(request: Request) {
   // Authentifizierung pruefen
@@ -50,55 +28,56 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Nicht authentifiziert" }, { status: 401 });
   }
 
-  // URL aus Query-Parameter lesen
   const { searchParams } = new URL(request.url);
-  const targetUrl = searchParams.get("url");
+  const fileId = searchParams.get("file_id");
+  const landAbk = searchParams.get("land_abk");
 
-  if (!targetUrl) {
-    return NextResponse.json({ error: "Parameter 'url' fehlt" }, { status: 400 });
+  // Strikte Parametervalidierung - Abbruch bei ungueltigem Input
+  if (!fileId || !landAbk) {
+    return NextResponse.json({ error: "Parameter 'file_id' und 'land_abk' erforderlich" }, { status: 400 });
+  }
+  if (!FILE_ID_RE.test(fileId)) {
+    return NextResponse.json({ error: "Ungueltige file_id (nur Ziffern erlaubt)" }, { status: 400 });
+  }
+  if (!LAND_ABK_RE.test(landAbk)) {
+    return NextResponse.json({ error: "Ungueltige land_abk (2-3 Buchstaben erwartet)" }, { status: 400 });
   }
 
-  const safeTargetUrl = getAllowedTargetUrl(targetUrl);
-  if (!safeTargetUrl) {
-    return NextResponse.json(
-      { error: "URL nicht erlaubt. Nur ZVG-Portal-Dokumente werden unterstuetzt." },
-      { status: 403 }
-    );
-  }
+  // URL vollstaendig server-seitig aus festen Bestandteilen aufbauen.
+  // Kein User-Input erreicht fetch() - CodeQL-SSRF-sicher.
+  const safeFileId = fileId.replace(/\D/g, ""); // Redundante Bereinigung
+  const safeLandAbk = landAbk.toLowerCase().replace(/[^a-z]/g, "");
+  const zvgUrl = `https://www.zvg-portal.de/index.php?button=showDoc&file_id=${safeFileId}&land_abk=${safeLandAbk}`;
 
-  // ZVG-Portal benoetigt eine aktive PHP-Session um Dokumente auszuliefern
+  // ZVG-Portal benoetigt eine aktive PHP-Session
   let zvgSessionCookie = "";
-  if (safeTargetUrl.hostname.includes("zvg-portal.de")) {
-    try {
-      const sessionResp = await fetch(
-        "https://www.zvg-portal.de/index.php?button=Termine%20suchen",
-        {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            Accept: "text/html",
-          },
-        }
-      );
-      const rawCookie = sessionResp.headers.get("set-cookie") ?? "";
-      const match = /PHPSESSID=[^;,\s]+/.exec(rawCookie);
-      zvgSessionCookie = match ? match[0] : "";
-    } catch {
-      // Ohne Session trotzdem versuchen
-    }
+  try {
+    const sessionResp = await fetch(
+      "https://www.zvg-portal.de/index.php?button=Termine%20suchen",
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          Accept: "text/html",
+        },
+      }
+    );
+    const rawCookie = sessionResp.headers.get("set-cookie") ?? "";
+    const match = /PHPSESSID=[^;,\s]+/.exec(rawCookie);
+    zvgSessionCookie = match ? match[0] : "";
+  } catch {
+    // Ohne Session trotzdem versuchen
   }
 
   try {
-    const upstream = await fetch(safeTargetUrl.toString(), {
+    const upstream = await fetch(zvgUrl, {
       headers: {
-        // Browser-User-Agent damit ZVG-Portal nicht blockt
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "application/pdf,*/*",
         Referer: "https://www.zvg-portal.de/",
         ...(zvgSessionCookie ? { Cookie: zvgSessionCookie } : {}),
       },
-      // Sicherheit: kein Follow von Redirects zu anderen Domains
       redirect: "manual",
     });
 
@@ -116,12 +95,9 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        // Kein Caching-Header - sensible Dokumente
         "Cache-Control": "private, no-store",
-        // Framing erlauben (nur fuer den eigenen Iframe)
         "X-Frame-Options": "SAMEORIGIN",
-        // Dateiname fuer den Download-Fall
-        "Content-Disposition": `inline; filename="dokument.pdf"`,
+        "Content-Disposition": `inline; filename="dokument-${safeFileId}.pdf"`,
       },
     });
   } catch (err) {

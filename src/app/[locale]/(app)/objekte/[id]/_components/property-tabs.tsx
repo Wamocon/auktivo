@@ -487,7 +487,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               <div>
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Noch keine Dokumente verfugbar</p>
                 <p className="mt-1 max-w-sm text-xs leading-relaxed text-zinc-500">
-                  Klicke auf "Dokumente laden" um Gutachten und Beschlusse vom ZVG-Portal
+                  Klicke auf &ldquo;Dokumente laden&rdquo; um Gutachten und Beschlusse vom ZVG-Portal
                   direkt in die App zu laden. Danach kannst du sie lesen und mit dem Chatbot besprechen.
                 </p>
               </div>
