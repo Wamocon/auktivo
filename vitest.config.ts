@@ -19,6 +19,7 @@ export default defineConfig({
         "src/lib/feature-gate.ts",
         "src/lib/stripe.ts",
         "src/lib/ai/max.ts",
+        "src/lib/email.ts",
         "src/i18n/routing.ts",
       ],
       exclude: [
@@ -32,12 +33,10 @@ export default defineConfig({
         "**/__tests__/**",
       ],
       thresholds: {
-        // Realistische Schwellenwerte fuer aktuelle Codebase
-        // (stripe.ts und max.ts haben API-Aufrufe die schwer zu mocken sind)
-        branches: 35,
-        functions: 70,
-        lines: 70,
-        statements: 70,
+        branches: 80,
+        functions: 90,
+        lines: 90,
+        statements: 90,
       },
     },
   },
