@@ -11,10 +11,12 @@ import {
   Loader2,
   PlayCircle,
   RefreshCw,
+  BookOpen,
 } from "lucide-react";
 import type { Property, PropertyAnalysis, PropertyDocument } from "@/lib/types/database";
 import { AiDisclaimer } from "@/components/ui/ai-disclaimer";
 import { RiskBadge } from "@/components/ui/risk-badge";
+import { PdfViewerModal } from "@/components/ui/pdf-viewer-modal";
 import { LocationTab } from "./location-tab";
 
 type Tab = "overview" | "description" | "location" | "documents" | "analysis" | "sources";
@@ -50,6 +52,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [triggering, setTriggering] = useState(false);
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null);
+  const [pdfViewer, setPdfViewer] = useState<{ url: string; fileName: string } | null>(null);
 
   async function triggerAnalysis() {
     setTriggering(true);
@@ -91,6 +94,15 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
 
   return (
     <div>
+      {/* PDF Viewer Modal */}
+      {pdfViewer && (
+        <PdfViewerModal
+          url={pdfViewer.url}
+          fileName={pdfViewer.fileName}
+          onClose={() => setPdfViewer(null)}
+        />
+      )}
+
       {/* Tab-Leiste */}
       <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
         {tabs.map((tab) => (
@@ -336,14 +348,22 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                         {doc.ocr_text.slice(0, 400)}{doc.ocr_text.length > 400 ? "..." : ""}
                       </p>
                     )}
-                    <a
-                      href={doc.original_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
-                    >
-                      <ExternalLink className="h-3 w-3" /> PDF offnen
-                    </a>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setPdfViewer({ url: doc.original_url, fileName: formatDocType(doc.document_type) })}
+                        className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                      >
+                        <BookOpen className="h-3 w-3" /> In App lesen
+                      </button>
+                      <a
+                        href={doc.original_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400"
+                      >
+                        <ExternalLink className="h-3 w-3" /> Im ZVG-Portal offnen
+                      </a>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -353,20 +373,38 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               {p.document_urls.map((url, i) => {
                 // Dateiname aus URL extrahieren
                 const raw = url.split("?")[0] ?? url;
-                const fileName = decodeURIComponent(raw.split("/").pop() ?? `Dokument ${i + 1}`);
-                const isPdf = url.toLowerCase().includes(".pdf") || fileName.toLowerCase().includes(".pdf");
+                const rawName = decodeURIComponent(raw.split("/").pop() ?? "");
+                // Fallback-Namen fuer dynamische ZVG-URLs (index.php?button=showDoc...)
+                const fileName = rawName && rawName !== "index.php" ? rawName : `Dokument ${i + 1}`;
+                const isPdf =
+                  url.toLowerCase().includes(".pdf") ||
+                  url.toLowerCase().includes("showdoc") ||
+                  url.toLowerCase().includes("download") ||
+                  fileName.toLowerCase().includes(".pdf");
                 return (
-                  <a
+                  <div
                     key={i}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-zinc-100 px-4 py-3 text-sm hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50"
+                    className="flex items-center gap-3 rounded-xl border border-zinc-100 px-4 py-3 dark:border-zinc-800"
                   >
                     <FileText className={`h-4 w-4 shrink-0 ${isPdf ? "text-red-500" : "text-zinc-400"}`} />
-                    <span className="flex-1 truncate text-zinc-700 dark:text-zinc-300">{fileName}</span>
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
-                  </a>
+                    <span className="flex-1 truncate text-sm text-zinc-700 dark:text-zinc-300">{fileName}</span>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={() => setPdfViewer({ url, fileName })}
+                        className="flex items-center gap-1 rounded-md bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-900/20 dark:text-brand-400"
+                      >
+                        <BookOpen className="h-3 w-3" /> Lesen
+                      </button>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                      >
+                        <ExternalLink className="h-3 w-3" /> ZVG-Portal
+                      </a>
+                    </div>
+                  </div>
                 );
               })}
             </div>

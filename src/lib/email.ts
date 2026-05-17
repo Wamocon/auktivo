@@ -1,7 +1,16 @@
 import { Resend } from "resend";
 import type { Property, SearchAlert } from "@/lib/types/database";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization - wirft nicht beim Modul-Load wenn RESEND_API_KEY fehlt
+let _resendClient: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!_resendClient) {
+    _resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resendClient;
+}
+
 const FROM = process.env.RESEND_FROM_EMAIL ?? "noreply@auktivo.de";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://auktivo.de";
 
@@ -115,7 +124,7 @@ export async function sendSearchAlertNotification(params: {
 </body>
 </html>`;
 
-  await resend.emails.send({
+  await getResendClient().emails.send({
     from: FROM,
     to,
     subject: `${properties.length} neue${properties.length === 1 ? "s Objekt" : " Objekte"} – Suchalarm „${alert.name}"`,
@@ -161,7 +170,7 @@ export async function sendCrawlerErrorNotification(params: {
 </body>
 </html>`;
 
-  await resend.emails.send({
+  await getResendClient().emails.send({
     from: FROM,
     to: adminEmail,
     subject: `[Auktivo] Crawler-Fehler – ${new Date().toLocaleDateString("de-DE")}`,
