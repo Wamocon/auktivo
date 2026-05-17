@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const schema = (process.env.SUPABASE_DB_SCHEMA ?? "public") as string;
+const schema = (process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA ?? "public") as string;
 
 export function createAdminClient() {
   return createClient(

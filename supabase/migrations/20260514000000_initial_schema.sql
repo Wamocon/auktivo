@@ -1,4 +1,4 @@
-﻿-- =============================================================
+-- =============================================================
 -- Auktivo - Vollstaendige Initial-Migration (idempotent)
 -- Enthaelt: 3 Schemas, Grants, alle Tabellen, RLS-Policies,
 --           Funktionen, Trigger und Admin-User

@@ -4,7 +4,7 @@ import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 import { isProtectedRoute, isAuthRoute, extractLocale } from "@/lib/utils/routes";
 
-const schema = (process.env.SUPABASE_DB_SCHEMA ?? "public") as string;
+const schema = (process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA ?? "public") as string;
 
 const intlMiddleware = createMiddleware(routing);
 

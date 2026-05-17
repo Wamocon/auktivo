@@ -2,7 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { scrapeZvgLand, scrapeZvgDetail } from "./scraper";
 import { BUNDESLAENDER } from "@/lib/utils/bundeslaender";
 import { getCrawlerProgress, setCrawlerProgress, resetCrawlerProgress, sendControlSignal } from "./state";
+import { sendSearchAlertNotification, sendCrawlerErrorNotification } from "@/lib/email";
 import type { CrawlerRunResult, ZvgEntry } from "./types";
+import type { Property, SearchAlert } from "@/lib/types/database";
 
 export { getCrawlerProgress };
 
@@ -168,6 +170,84 @@ async function enrichWithDetails(
 }
 
 /**
+ * Prueft alle aktiven Suchalarme gegen neu eingefuegte Properties und
+ * schickt E-Mail-Benachrichtigungen fuer Treffer.
+ */
+async function notifySearchAlerts(
+  admin: ReturnType<typeof createAdminClient>,
+  newZvgIds: string[]
+): Promise<void> {
+  if (!newZvgIds.length) return;
+
+  // Neu eingefuegte Properties laden
+  const { data: newProps, error: propErr } = await admin
+    .from("properties")
+    .select("*")
+    .in("zvg_id", newZvgIds)
+    .eq("status", "active");
+
+  if (propErr || !newProps?.length) return;
+
+  // Alle aktiven Alarme mit E-Mail-Benachrichtigung laden (inkl. User-E-Mail)
+  const { data: alerts, error: alertErr } = await admin
+    .from("search_alerts")
+    .select("*, profiles(email, email_notifications)")
+    .eq("is_active", true)
+    .eq("notification_email", true);
+
+  if (alertErr || !alerts?.length) return;
+
+  for (const alert of alerts) {
+    const profile = (alert as SearchAlert & { profiles: { email: string; email_notifications: boolean } | null }).profiles;
+    if (!profile?.email || !profile.email_notifications) continue;
+
+    const matches = (newProps as Property[]).filter((p) => {
+      // PLZ-Matching: mindestens erste 2 Stellen uebereinstimmen (Leitregion)
+      const zipMatch =
+        !alert.zip_codes?.length ||
+        alert.zip_codes.some(
+          (z: string) => p.zip_code.startsWith(z.slice(0, 2))
+        );
+
+      // Objekttyp-Matching (leer = alle Typen)
+      const typeMatch =
+        !alert.property_types?.length ||
+        alert.property_types.includes(p.property_type ?? "");
+
+      // Wertgrenzen
+      const minMatch =
+        alert.min_market_value == null ||
+        (p.market_value != null && p.market_value >= alert.min_market_value);
+      const maxMatch =
+        alert.max_market_value == null ||
+        (p.market_value != null && p.market_value <= alert.max_market_value);
+
+      return zipMatch && typeMatch && minMatch && maxMatch;
+    });
+
+    if (!matches.length) continue;
+
+    try {
+      await sendSearchAlertNotification({
+        to: profile.email,
+        alert: { id: alert.id, name: alert.name },
+        properties: matches,
+      });
+
+      // last_triggered_at aktualisieren
+      await admin
+        .from("search_alerts")
+        .update({ last_triggered_at: new Date().toISOString() })
+        .eq("id", alert.id);
+
+      console.log(`[Crawler] Suchalarm "${alert.name}" → ${matches.length} Treffer an ${profile.email}`);
+    } catch (err) {
+      console.error("[Crawler] Suchalarm-E-Mail fehlgeschlagen:", err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+/**
  * Fuehrt einen vollstaendigen Crawler-Lauf durch:
  * 1. Erstellt einen crawler_runs-Eintrag
  * 2. Scraped alle 16 Bundeslaender nacheinander (rate-limited)
@@ -295,6 +375,14 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       if (getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
         await enrichWithDetails(admin, entries);
       }
+
+      // Phase 3: Suchalarm-Benachrichtigungen fuer neue Objekte
+      if (entries.length > 0) {
+        const newZvgIds = entries.map((e) => e.zvg_id);
+        notifySearchAlerts(admin, newZvgIds).catch((err) =>
+          console.error("[Crawler] Suchalarm-Benachrichtigung fehlgeschlagen:", err)
+        );
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[Crawler] Fehler bei ${land.name}:`, message);
@@ -335,6 +423,14 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
     `[Crawler] Abgeschlossen in ${Math.round(duration_ms / 1000)}s - ` +
       `${totalScraped} gefunden, ${totalInserted} gespeichert, ${totalErrors} Fehler`
   );
+
+  // Admin-E-Mail bei kritischen Fehlern (mehr als 50 % der Objekte fehlgeschlagen)
+  if (totalErrors > 0 && totalErrors > totalScraped * 0.5) {
+    sendCrawlerErrorNotification({
+      errorMessage: `${totalErrors} von ${totalScraped} Objekten konnten nicht verarbeitet werden.`,
+      stats: result,
+    }).catch((err) => console.error("[Crawler] Admin-E-Mail fehlgeschlagen:", err));
+  }
 
   return result;
 }

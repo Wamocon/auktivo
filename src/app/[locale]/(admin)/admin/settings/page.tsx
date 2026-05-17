@@ -53,7 +53,7 @@ export default async function AdminSettingsPage({
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {[
             { label: "Node-Umgebung", value: process.env.NODE_ENV ?? "production" },
-            { label: "DB-Schema", value: process.env.SUPABASE_DB_SCHEMA ?? "public" },
+            { label: "DB-Schema", value: process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA ?? "public" },
             { label: "Vercel Region", value: process.env.VERCEL_REGION ?? "lokal" },
             {
               label: "Supabase URL",

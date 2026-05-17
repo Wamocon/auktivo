@@ -16,9 +16,9 @@ CREATE POLICY "Admins can read settings"
   ON app_settings FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.is_admin = true
+      SELECT 1 FROM auktivo_dev.profiles
+      WHERE auktivo_dev.profiles.id = auth.uid()
+      AND auktivo_dev.profiles.is_admin = true
     )
   );
 
@@ -26,9 +26,9 @@ CREATE POLICY "Admins can write settings"
   ON app_settings FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.is_admin = true
+      SELECT 1 FROM auktivo_dev.profiles
+      WHERE auktivo_dev.profiles.id = auth.uid()
+      AND auktivo_dev.profiles.is_admin = true
     )
   );
 

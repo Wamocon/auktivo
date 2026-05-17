@@ -27,6 +27,9 @@ ALLOWED_FILES=(
   ".github/workflows/pr-pipeline.yml"
   "docs/workflow-guide.md"
   "HOWTO.md"
+  ".env.example"
+  "supabase/migrations/20260514000000_initial_schema.sql"
+  "supabase/migrations/20260516000000_app_settings.sql"
 )
 
 # ─── Colours ──────────────────────────────────────────────────────────────────
@@ -93,6 +96,28 @@ while IFS= read -r file; do
 done <<< "$staged_files"
 
 # ─── Scan file content for secret patterns ───────────────────────────────────
+# Windows-optimised: one grep call per pattern per file instead of per line.
+# This avoids the O(lines*patterns) process-fork penalty that freezes Git on Windows.
+
+scan_pattern() {
+  # Usage: scan_pattern <file> <tmp_file> <ERE-pattern> <reason> [i]
+  # The optional 5th argument "i" enables case-insensitive matching.
+  local file="$1" tmp_file="$2" pattern="$3" reason="$4" ci="${5:-}"
+  while IFS= read -r match; do
+    local line_no content trimmed
+    line_no="${match%%:*}"
+    content="${match#*:}"
+    # Skip inline exception marker (pure bash, no subprocess)
+    [[ "$content" == *notsecret* ]] && continue
+    # Skip comment-only lines
+    trimmed="${content#"${content%%[! ]*}"}"
+    [[ "$trimmed" == \#* ]] && continue
+    [[ "$trimmed" == //* ]] && continue
+    [[ "$trimmed" == \** ]] && continue
+    flag_match "$file" "$line_no" "$content" "$reason"
+  done < <(grep -n"${ci}"E "$pattern" "$tmp_file" 2>/dev/null || true)
+}
+
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
   is_allowed "$file" && continue
@@ -102,67 +127,62 @@ while IFS= read -r file; do
     continue
   fi
 
-  line_no=0
   tmp_content_file=$(mktemp)
   git show ":$file" > "$tmp_content_file" 2>/dev/null || true
-  while IFS= read -r line; do
-    line_no=$((line_no + 1))
-    trimmed="${line#"${line%%[! ]*}"}"
-    [[ "$trimmed" =~ ^#  ]] && continue
-    [[ "$trimmed" =~ ^// ]] && continue
-    [[ "$trimmed" =~ ^\* ]] && continue
 
-    # ── AWS ────────────────────────────────────────────────────────────────
-    echo "$line" | grep -qE 'AKIA[0-9A-Z]{16}' \
-      && flag_match "$file" "$line_no" "$line" "AWS Access Key ID (AKIA...)"
+  # ── AWS ──────────────────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    'AKIA[0-9A-Z]{16}' "AWS Access Key ID (AKIA...)"
+  scan_pattern "$file" "$tmp_content_file" \
+    '(aws_secret_access_key|aws_secret)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9/+=]{40}' \
+    "AWS Secret Access Key" "i"
 
-    echo "$line" | grep -qiE '(aws_secret_access_key|aws_secret)\s*[=:]\s*["\x27]?[A-Za-z0-9/+=]{40}' \
-      && flag_match "$file" "$line_no" "$line" "AWS Secret Access Key"
+  # ── GitHub tokens ────────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    'gh[psoura]_[A-Za-z0-9]{36,}' "GitHub Personal/Service Access Token"
+  scan_pattern "$file" "$tmp_content_file" \
+    'github_pat_[A-Za-z0-9_]{20,}' "GitHub Fine-grained PAT"
 
-    # ── GitHub tokens ──────────────────────────────────────────────────────
-    echo "$line" | grep -qE 'gh[psoura]_[A-Za-z0-9]{36,}' \
-      && flag_match "$file" "$line_no" "$line" "GitHub Personal/Service Access Token"
+  # ── Vercel ───────────────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    '(vercel_token|VERCEL_TOKEN)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9]{20,}' \
+    "Vercel token hard-coded in file" "i"
 
-    echo "$line" | grep -qE 'github_pat_[A-Za-z0-9_]{20,}' \
-      && flag_match "$file" "$line_no" "$line" "GitHub Fine-grained PAT"
+  # ── Generic API keys / secrets ────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    '(api[_-]?key|apikey)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_-]{20,}' \
+    "Generic API key" "i"
+  scan_pattern "$file" "$tmp_content_file" \
+    '(secret[_-]?key|secret_token|client_secret)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_-]{12,}' \
+    "Hard-coded secret/client secret" "i"
+  scan_pattern "$file" "$tmp_content_file" \
+    '(access_token|ACCESS_TOKEN)[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_.+-]{20,}' \
+    "Hard-coded access token" "i"
+  scan_pattern "$file" "$tmp_content_file" \
+    '(password|passwd|db_password|db_pass)[[:space:]]*[=:][[:space:]]*["'"'"']?[^ "'"'"']{8,}' \
+    "Hard-coded password" "i"
 
-    # ── Vercel ─────────────────────────────────────────────────────────────
-    echo "$line" | grep -qiE '(vercel_token|VERCEL_TOKEN)\s*[=:]\s*["\x27]?[A-Za-z0-9]{20,}' \
-      && flag_match "$file" "$line_no" "$line" "Vercel token hard-coded in file"
+  # ── Private keys ──────────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY' "Private key (PEM format)"
 
-    # ── Generic API keys / secrets ─────────────────────────────────────────
-    echo "$line" | grep -qiE '(api[_-]?key|apikey)\s*[=:]\s*["\x27]?[A-Za-z0-9_\-]{20,}' \
-      && flag_match "$file" "$line_no" "$line" "Generic API key"
+  # ── Connection strings ────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    '(postgres|mysql|mongodb|redis)://[^:]+:[^@]{3,}@' \
+    "Database connection string with embedded password"
 
-    echo "$line" | grep -qiE '(secret[_-]?key|secret_token|client_secret)\s*[=:]\s*["\x27]?[A-Za-z0-9_\-]{12,}' \
-      && flag_match "$file" "$line_no" "$line" "Hard-coded secret/client secret"
+  # ── JWT tokens ────────────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' "JWT token"
 
-    echo "$line" | grep -qiE '(access_token|ACCESS_TOKEN)\s*[=:]\s*["\x27]?[A-Za-z0-9_\.\-]{20,}' \
-      && flag_match "$file" "$line_no" "$line" "Hard-coded access token"
+  # ── Supabase ──────────────────────────────────────────────────────────────
+  scan_pattern "$file" "$tmp_content_file" \
+    '(service_role|supabase_service_role)[[:space:]]*[=:][[:space:]]*["'"'"']?ey[A-Za-z0-9_-]{20,}' \
+    "Supabase service role key" "i"
+  scan_pattern "$file" "$tmp_content_file" \
+    'sb_publishable_[A-Za-z0-9_-]{20,}' \
+    "Supabase anon/publishable key hard-coded in file"
 
-    echo "$line" | grep -qiE '(password|passwd|db_password|db_pass)\s*[=:]\s*["\x27]?[^ "\x27]{8,}' \
-      && flag_match "$file" "$line_no" "$line" "Hard-coded password"
-
-    # ── Private keys ────────────────────────────────────────────────────────
-    echo "$line" | grep -qE '\-\-\-\-\-BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY' \
-      && flag_match "$file" "$line_no" "$line" "Private key (PEM format)"
-
-    # ── Connection strings ─────────────────────────────────────────────────
-    echo "$line" | grep -qE '(postgres|mysql|mongodb|redis):\/\/[^:]+:[^@]{3,}@' \
-      && flag_match "$file" "$line_no" "$line" "Database connection string with embedded password"
-
-    # ── JWT tokens ─────────────────────────────────────────────────────────
-    echo "$line" | grep -qE 'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' \
-      && flag_match "$file" "$line_no" "$line" "JWT token"
-
-    # ── Supabase ───────────────────────────────────────────────────────────
-    echo "$line" | grep -qiE '(service_role|supabase_service_role)\s*[=:]\s*["\x27]?ey[A-Za-z0-9_-]{20,}' \
-      && flag_match "$file" "$line_no" "$line" "Supabase service role key"
-
-    echo "$line" | grep -qE 'sb_publishable_[A-Za-z0-9_-]{20,}' \
-      && flag_match "$file" "$line_no" "$line" "Supabase anon/publishable key hard-coded in file"
-
-  done < "$tmp_content_file"
   rm -f "$tmp_content_file"
 
 done <<< "$staged_files"
