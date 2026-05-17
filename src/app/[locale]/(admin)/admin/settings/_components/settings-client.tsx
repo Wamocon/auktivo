@@ -18,11 +18,11 @@ import type { AppSettings } from "@/lib/settings";
 import { BUNDESLAENDER } from "@/lib/utils/bundeslaender";
 
 const CRON_PRESETS = [
-  { label: "TÃ¤glich um 06:00 UTC", value: "0 6 * * *" },
-  { label: "TÃ¤glich um 02:00 UTC", value: "0 2 * * *" },
-  { label: "TÃ¤glich um 22:00 UTC", value: "0 22 * * *" },
-  { label: "Zweimal tÃ¤glich (06 + 18 UTC)", value: "0 6,18 * * *" },
-  { label: "WÃ¶chentlich Montag 06:00 UTC", value: "0 6 * * 1" },
+  { label: "Täglich um 06:00 UTC", value: "0 6 * * *" },
+  { label: "Täglich um 02:00 UTC", value: "0 2 * * *" },
+  { label: "Täglich um 22:00 UTC", value: "0 22 * * *" },
+  { label: "Zweimal täglich (06 + 18 UTC)", value: "0 6,18 * * *" },
+  { label: "Wöchentlich Montag 06:00 UTC", value: "0 6 * * 1" },
   { label: "Benutzerdefiniert", value: "custom" },
 ];
 
@@ -262,7 +262,7 @@ export function AdminSettingsClient({ initialSettings }: Props) {
                   className="w-40 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
                 />
               </SettingRow>
-              <SettingRow label="Support-E-Mail" description="E-Mail-Adresse die Nutzern fÃ¼r Support angezeigt wird.">
+              <SettingRow label="Support-E-Mail" description="E-Mail-Adresse die Nutzern für Support angezeigt wird.">
                 <input
                   type="email"
                   value={supportEmail}
@@ -328,7 +328,7 @@ export function AdminSettingsClient({ initialSettings }: Props) {
                   </span>
                 </div>
               </SettingRow>
-              <SettingRow label="Suchlimit Free-Plan (pro Monat)" description="Maximale Suchanfragen fÃ¼r kostenlose Accounts.">
+              <SettingRow label="Suchlimit Free-Plan (pro Monat)" description="Maximale Suchanfragen für kostenlose Accounts.">
                 <input
                   type="number"
                   min={1}
@@ -351,9 +351,9 @@ export function AdminSettingsClient({ initialSettings }: Props) {
                   className="w-24 rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-center text-sm font-mono text-zinc-900 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
                 />
               </SettingRow>
-              <SettingRow label="Pro-Plan Preis (EUR/Monat)" description="Nur fÃ¼r die Anzeige. PreisÃ¤nderungen mÃ¼ssen in Stripe vorgenommen werden.">
+              <SettingRow label="Pro-Plan Preis (EUR/Monat)" description="Nur für die Anzeige. Preisänderungen müssen in Stripe vorgenommen werden.">
                 <div className="flex items-center gap-1">
-                  <span className="text-sm text-zinc-500">â‚¬</span>
+                  <span className="text-sm text-zinc-500">€</span>
                   <input
                     type="number"
                     min={0}
@@ -376,7 +376,7 @@ export function AdminSettingsClient({ initialSettings }: Props) {
           <div>
             <div className="mb-5">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Crawler-Einstellungen</h2>
-              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">Zeitplan, Geschwindigkeit und aktive BundeslÃ¤nder.</p>
+              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">Zeitplan, Geschwindigkeit und aktive Bundesländer.</p>
             </div>
             <div className="space-y-4">
               <div className="space-y-1.5">
@@ -450,9 +450,9 @@ export function AdminSettingsClient({ initialSettings }: Props) {
                 </div>
               </SettingRow>
 
-              {/* BundeslÃ¤nder */}
+              {/* Bundesländer */}
               <div className="space-y-2">
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Aktive BundeslÃ¤nder</p>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Aktive Bundesländer</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setActiveStates(["all"])}
@@ -480,8 +480,8 @@ export function AdminSettingsClient({ initialSettings }: Props) {
                 </div>
                 <p className="text-xs text-zinc-400 dark:text-zinc-500">
                   {activeStates.includes("all")
-                    ? "Alle 16 BundeslÃ¤nder werden gecrawlt."
-                    : `${activeStates.length} Bundesland/BundeslÃ¤nder ausgewÃ¤hlt: ${activeStates.join(", ")}`}
+                    ? "Alle 16 Bundesländer werden gecrawlt."
+                    : `${activeStates.length} Bundesland/Bundesländer ausgewählt: ${activeStates.join(", ")}`}
                 </p>
               </div>
             </div>

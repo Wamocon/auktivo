@@ -15,13 +15,6 @@ interface SearchClientProps {
   locale: string;
 }
 
-const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  house: "Haus",
-  apartment: "Wohnung",
-  commercial: "Gewerbe",
-  land: "Grundstuck",
-  other: "Sonstiges",
-};
 
 function PropertyCard({
   property,
@@ -30,7 +23,16 @@ function PropertyCard({
   property: PropertyWithAnalysis;
   onSelect: () => void;
 }) {
+  const t = useTranslations("search");
   const days = daysUntil(property.auction_date ?? null);
+
+  const typeLabel: Record<string, string> = {
+    house: t("property_types.house"),
+    apartment: t("property_types.apartment"),
+    commercial: t("property_types.commercial"),
+    land: t("property_types.land"),
+    other: t("property_types.other"),
+  };
 
   return (
     <button
@@ -56,7 +58,7 @@ function PropertyCard({
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
             <Building2 className="h-3 w-3" />
-            {PROPERTY_TYPE_LABELS[property.property_type ?? "other"] ?? "Objekt"}
+            {typeLabel[property.property_type ?? "other"] ?? "Objekt"}
           </span>
           {property.property_analyses?.risk_level && (
             <RiskBadge level={property.property_analyses.risk_level} />
@@ -176,7 +178,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
             {/* Bundesland */}
             <div>
               <label htmlFor="bundesland-select" className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                <Map className="h-3.5 w-3.5" /> Bundesland
+                <Map className="h-3.5 w-3.5" /> {t("bundesland_label")}
               </label>
               <select
                 id="bundesland-select"
@@ -184,7 +186,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
                 onChange={(e) => setBundesland(e.target.value)}
                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
               >
-                <option value="">Alle Bundeslaender</option>
+                <option value="">{t("all_states")}</option>
                 {BUNDESLAENDER.map((bl) => (
                   <option key={bl.short} value={bl.short}>{bl.name}</option>
                 ))}
@@ -193,7 +195,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
 
             {/* PLZ + Umkreis */}
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">PLZ</label>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("zip_label")}</label>
               <input
                 type="text"
                 value={zip}
@@ -225,7 +227,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
             {/* Budget */}
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                <Euro className="h-3.5 w-3.5" /> Budget (Mindestgebot)
+                <Euro className="h-3.5 w-3.5" /> {t("budget_label")}
               </label>
               <div className="flex gap-2">
                 <input
@@ -280,7 +282,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </div>
               {!isPro && (
                 <Link href="/upgrade" className="absolute inset-0 flex items-center justify-center gap-1.5 rounded-xl bg-zinc-100/90 text-xs font-semibold text-brand-600 backdrop-blur-sm dark:bg-zinc-800/90">
-                  <TrendingUp className="h-3 w-3" /> Pro freischalten
+                <TrendingUp className="h-3 w-3" /> {t("pro_unlock")}
                 </Link>
               )}
             </div>
@@ -299,7 +301,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
         {!isPro && (
           <div className="mt-3 rounded-xl border-l-4 border-amber-400 bg-amber-50 p-3.5 dark:border-amber-500/50 dark:bg-amber-900/10">
             <p className="mb-1 text-xs font-semibold text-amber-800 dark:text-amber-300">
-              {profile?.monthly_search_count ?? 0} / 5 Suchen diesen Monat
+              {t("searches_month", { used: profile?.monthly_search_count ?? 0 })}
             </p>
             <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/40">
               <div
@@ -308,7 +310,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               />
             </div>
             <Link href="/upgrade" className="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400">
-              Upgrade auf Pro &rarr;
+              {t("upgrade_pro")} &rarr;
             </Link>
           </div>
         )}
@@ -340,15 +342,15 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
               <Search className="h-5 w-5 text-zinc-400" />
             </div>
-            <p className="text-sm font-medium text-zinc-500">Bundesland oder PLZ eingeben und suchen</p>
-            <p className="text-xs text-zinc-400">z.B. Bayern oder 80539 fuer Muenchen</p>
+            <p className="text-sm font-medium text-zinc-500">{t("empty_state_title")}</p>
+            <p className="text-xs text-zinc-400">{t("empty_state_hint")}</p>
           </div>
         )}
 
         {searched && results.length === 0 && !limitReached && !errorMsg && (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
             <p className="text-sm font-medium text-zinc-500">{t("no_results")}</p>
-            <p className="text-xs text-zinc-400">Versuche einen groesseren Umkreis</p>
+            <p className="text-xs text-zinc-400">{t("no_results_hint")}</p>
           </div>
         )}
 

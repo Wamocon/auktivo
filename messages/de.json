@@ -192,9 +192,19 @@
     "search_button": "Suchen",
     "results": "{count} Ergebnisse",
     "no_results": "Keine Objekte gefunden. Bitte erweitere die Suchkriterien.",
+    "no_results_hint": "Versuche einen größeren Umkreis oder ein anderes Bundesland.",
     "limit_reached": "Suchlimit erreicht. Upgrade auf Pro für unbegrenzte Suchen.",
     "pro_filter_hint": "Pro-Feature",
-    "loading": "Lade Ergebnisse..."
+    "loading": "Lade Ergebnisse...",
+    "bundesland_label": "Bundesland",
+    "all_states": "Alle Bundesländer",
+    "zip_label": "PLZ",
+    "budget_label": "Budget (Mindestgebot)",
+    "empty_state_title": "Bundesland oder PLZ eingeben und suchen",
+    "empty_state_hint": "z.B. Bayern oder 80539 für München",
+    "pro_unlock": "Pro freischalten",
+    "searches_month": "{used} / 5 Suchen diesen Monat",
+    "upgrade_pro": "Upgrade auf Pro"
   },
   "property": {
     "details": "Details",

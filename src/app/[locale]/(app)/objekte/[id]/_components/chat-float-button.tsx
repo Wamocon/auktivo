@@ -189,20 +189,32 @@ export function ChatFloatButton({ propertyId, locale, isPro }: ChatFloatButtonPr
       )}
 
       {/* Floating Button */}
-      <button
-        onClick={handleToggle}
-        aria-label={chatOpen ? "Chat schliessen" : "KI-Assistent offnen"}
-        title={isPro ? "KI-Chat starten" : "Pro-Feature - jetzt freischalten"}
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-2xl ring-2 ring-white transition-transform hover:scale-105 active:scale-95 dark:bg-zinc-100 dark:text-zinc-900 dark:ring-zinc-800"
-      >
-        {chatOpen ? (
-          <X className="h-6 w-6" />
-        ) : isPro ? (
-          <Scale className="h-6 w-6" />
-        ) : (
-          <Lock className="h-5 w-5" />
+      <div className="relative flex flex-col items-center gap-1">
+        {/* Pulse-Ring (nur wenn Chat geschlossen) */}
+        {!chatOpen && (
+          <span className="pointer-events-none absolute inset-0 rounded-full bg-zinc-900/30 dark:bg-zinc-100/20 animate-ping" />
         )}
-      </button>
+        <button
+          onClick={handleToggle}
+          aria-label={chatOpen ? "Chat schliessen" : "KI-Assistent offnen"}
+          title={isPro ? "KI-Chat starten" : "Pro-Feature - jetzt freischalten"}
+          className="relative flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-white shadow-2xl ring-2 ring-white transition-transform hover:scale-110 active:scale-95 dark:bg-zinc-100 dark:text-zinc-900 dark:ring-zinc-800"
+        >
+          {chatOpen ? (
+            <X className="h-7 w-7" />
+          ) : isPro ? (
+            <Scale className="h-7 w-7" />
+          ) : (
+            <Lock className="h-6 w-6" />
+          )}
+        </button>
+        {/* Label */}
+        {!chatOpen && (
+          <span className="whitespace-nowrap rounded-full bg-zinc-900 px-2 py-0.5 text-[10px] font-semibold text-white shadow dark:bg-zinc-100 dark:text-zinc-900">
+            KI-Chat
+          </span>
+        )}
+      </div>
     </div>
   );
 }

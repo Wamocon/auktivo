@@ -34,7 +34,7 @@ Auktivo loest dieses Problem:
 | KI | AI MAX (OpenAI-kompatibler, selbst gehosteter Endpunkt) |
 | Payment | Stripe (monatliches Abo, Customer Portal) |
 | i18n | next-intl v4 (Deutsch + Englisch) |
-| Tests | Vitest v4, Testing Library (167 Tests, 98.82% Coverage) |
+| Tests | Vitest v4, Testing Library (178 Tests, >99% Coverage) |
 | CI/CD | GitHub Actions + Vercel |
 
 ---
@@ -198,18 +198,19 @@ npm run test:coverage
 ```
 
 ```
-Tests:    167 passed
-Coverage: 98.82% Lines | 99% Stmts | 97.33% Branch | 100% Funcs
+Tests:    178 passed
+Coverage: 99.2% Lines | 99.3% Stmts | 97.29% Branch | 100% Funcs
           (Thresholds: 80% Branch / 90% Lines / 90% Funcs)
 ```
 
 | Testdatei | Tests | Coverage |
 |---|---|---|
-| `routes.test.ts` | 35 | 100% |
+| `routes.test.ts` | 36 | 100% |
 | `date.test.ts` | 16 | 100% |
-| `feature-gate.test.ts` | 19 | 94% |
-| `stripe.test.ts` | 11 | 100% |
-| `max.test.ts` | 13 | 100% |
+| `bundeslaender.test.ts` | 6 | 100% |
+| `feature-gate.test.ts` | 20 | 94% |
+| `stripe.test.ts` | 12 | 100% |
+| `max.test.ts` | 25 | 100% Lines / 98% Branch |
 | `email.test.ts` | 22 | 100% Lines / 96% Branch |
 | `routing.test.ts` | 12 | 100% |
 | `database.test.ts` | 29 | Typen |

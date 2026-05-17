@@ -301,3 +301,136 @@ describe("chatWithProperty", () => {
     expect(systemMsg.content).toContain("KI-Zusammenfassung");
   });
 });
+
+describe("analyzePropertyFallback", () => {
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("gibt low-Risiko zurueck wenn kein Keyword gefunden", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Normaler Text ohne Auffaelligkeiten.", {
+      court: "AG Test",
+      market_value: 100000,
+      city: "Berlin",
+    });
+
+    expect(result.risk_level).toBe("low");
+    expect(result.baulasten).toHaveLength(0);
+    expect(result.sanierungsbedarf).toHaveLength(0);
+    expect(result.mietverhaeltnisse).toHaveLength(0);
+    expect(result.grundbuchbelastungen).toHaveLength(0);
+    expect(result.positive_signals).toHaveLength(1);
+    expect(result.disclaimer).toContain("algorithmisch");
+  });
+
+  it("erkennt Baulast-Keyword und setzt high-Risiko", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Das Objekt hat eine eingetragene Baulast.", {
+      court: "AG Frankfurt",
+    });
+
+    expect(result.baulasten).toHaveLength(1);
+    expect(result.baulasten[0].severity).toBe("high");
+    // extractExcerpt arbeitet auf dem Originaltext, also Grossbuchstabe
+    expect(result.baulasten[0].text_excerpt.toLowerCase()).toContain("baulast");
+    expect(result.risk_level).toBe("high");
+  });
+
+  it("erkennt Sanierungsbedarf-Keyword (asbest)", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Im Keller wurde Asbest festgestellt.", {
+      court: "AG Hamburg",
+    });
+
+    expect(result.sanierungsbedarf).toHaveLength(1);
+    expect(result.sanierungsbedarf[0].severity).toBe("high");
+    expect(result.risk_level).toBe("high");
+  });
+
+  it("erkennt Mietverhaeltnis-Keyword (mieter)", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Die Wohnung ist an Mieter vermietet.", {
+      court: "AG Muenchen",
+    });
+
+    expect(result.mietverhaeltnisse.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("erkennt Grundbuchbelastung (grundschuld)", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Eine Grundschuld ist eingetragen.", {
+      court: "AG Koeln",
+    });
+
+    expect(result.grundbuchbelastungen).toHaveLength(1);
+    expect(result.grundbuchbelastungen[0].type).toBe("Grundschuld");
+    expect(result.grundbuchbelastungen[0].severity).toBe("high");
+  });
+
+  it("setzt critical-Risiko bei 3 oder mehr high-Befunden", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const text = "Das Objekt hat eine Baulast und Asbest im Keller. Grundschuld ist eingetragen.";
+    const result = analyzePropertyFallback(text, { court: "AG Stuttgart" });
+
+    expect(result.risk_level).toBe("critical");
+  });
+
+  it("setzt medium-Risiko bei 2 Gesamtbefunden ohne high", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    // "modernisierung" (low) + "renovierung" (low) = 2 Befunde, kein high
+    const result = analyzePropertyFallback(
+      "Das Gebaeude erfordert Modernisierung und Renovierung.",
+      { court: "AG Bremen" }
+    );
+
+    expect(result.risk_level).toBe("medium");
+    expect(result.positive_signals).toHaveLength(0);
+  });
+
+  it("schliesst city und market_value in Summary ein", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Text", {
+      court: "AG Test",
+      city: "Stuttgart",
+      market_value: 250000,
+    });
+
+    expect(result.summary).toContain("Stuttgart");
+    expect(result.summary).toContain("250.000");
+  });
+
+  it("ignoriert city und market_value wenn null", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Text", {
+      court: "AG Test",
+      city: null,
+      market_value: null,
+    });
+
+    // Summary enthaelt keinen Orts- oder Werthinweis
+    expect(result.summary).not.toContain("Objekt in");
+    expect(result.summary).not.toContain("Verkehrswert");
+  });
+
+  it("extractExcerpt schneidet korrekt aus kurzem Text", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const shortText = "baulast";
+    const result = analyzePropertyFallback(shortText, { court: "AG Test" });
+
+    expect(result.baulasten[0].text_excerpt).toBe("baulast");
+  });
+
+  it("erkennt Wegerecht als medium-severity Baulast", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Es besteht ein Wegerecht fuer die Nachbarn.", {
+      court: "AG Nuernberg",
+    });
+
+    expect(result.baulasten).toHaveLength(1);
+    expect(result.baulasten[0].severity).toBe("medium");
+    // Nur 1 Befund mit medium-Severity => low (highCount=0, totalCount=1 < 2)
+    expect(result.risk_level).toBe("low");
+  });
+});
+

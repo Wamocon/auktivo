@@ -190,9 +190,19 @@
     "search_button": "Search",
     "results": "{count} results",
     "no_results": "No properties found. Please expand your search criteria.",
+    "no_results_hint": "Try a larger radius or a different state.",
     "limit_reached": "Search limit reached. Upgrade to Pro for unlimited searches.",
     "pro_filter_hint": "Pro feature",
-    "loading": "Loading results..."
+    "loading": "Loading results...",
+    "bundesland_label": "Federal State",
+    "all_states": "All states",
+    "zip_label": "Zip code",
+    "budget_label": "Budget (minimum bid)",
+    "empty_state_title": "Enter a state or zip code and search",
+    "empty_state_hint": "e.g. Bavaria or 80539 for Munich",
+    "pro_unlock": "Unlock Pro",
+    "searches_month": "{used} / 5 searches this month",
+    "upgrade_pro": "Upgrade to Pro"
   },
   "property": {
     "details": "Details",
@@ -389,6 +399,7 @@
     "new_properties": "New properties",
     "duration": "Duration"
   },
+  "footer": {
     "company": "WAMOCON GmbH",
     "links": {
       "imprint": "Imprint",

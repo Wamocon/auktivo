@@ -20,20 +20,29 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const zip = searchParams.get("zip");
   const bundesland = searchParams.get("bundesland");
+  const radius = searchParams.get("radius") ? Number(searchParams.get("radius")) : 25;
   const types = searchParams.get("types")?.split(",").filter(Boolean) ?? [];
   const budgetMin = searchParams.get("budget_min") ? Number(searchParams.get("budget_min")) : null;
   const budgetMax = searchParams.get("budget_max") ? Number(searchParams.get("budget_max")) : null;
+
+  // PLZ-Prefix-Laenge basierend auf Umkreis: groesserer Umkreis = kuerzerer Prefix = mehr Treffer
+  function zipPrefixLength(r: number): number {
+    if (r >= 100) return 1;
+    if (r >= 50)  return 2;
+    if (r >= 25)  return 3;
+    return 4;
+  }
 
   let query = supabase
     .from("properties")
     .select("*, property_analyses(risk_level, summary, analysis_status)")
     .eq("status", "active")
     .order("auction_date", { ascending: true })
-    .limit(50);
+    .limit(100);
 
   if (zip) {
-    // PLZ-basierte Filterung (einfache Prefix-Suche)
-    query = query.like("zip_code", `${zip.slice(0, 3)}%`);
+    const prefixLen = zipPrefixLength(radius);
+    query = query.like("zip_code", `${zip.slice(0, prefixLen)}%`);
   }
 
   if (bundesland) {
