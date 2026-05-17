@@ -14,9 +14,7 @@ function isAllowedUrl(rawUrl: string): boolean {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol !== "https:") return false;
-    return ALLOWED_HOSTS.some(
-      (host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`)
-    );
+    return ALLOWED_HOSTS.includes(parsed.hostname);
   } catch {
     return false;
   }
@@ -40,7 +38,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Parameter 'url' fehlt" }, { status: 400 });
   }
 
-  if (!isAllowedUrl(targetUrl)) {
+  let parsedTarget: URL;
+  try {
+    parsedTarget = new URL(targetUrl);
+  } catch {
+    return NextResponse.json({ error: "Ungueltige URL" }, { status: 400 });
+  }
+
+  if (!isAllowedUrl(parsedTarget.toString())) {
     return NextResponse.json(
       { error: "URL nicht erlaubt. Nur ZVG-Portal-Dokumente werden unterstuetzt." },
       { status: 403 }
@@ -48,7 +53,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const upstream = await fetch(targetUrl, {
+    const upstream = await fetch(parsedTarget.toString(), {
       headers: {
         // Browser-User-Agent damit ZVG-Portal nicht blockt
         "User-Agent":
@@ -57,7 +62,7 @@ export async function GET(request: Request) {
         Referer: "https://www.zvg-portal.de/",
       },
       // Sicherheit: kein Follow von Redirects zu anderen Domains
-      redirect: "follow",
+      redirect: "manual",
     });
 
     if (!upstream.ok) {
