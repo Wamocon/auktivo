@@ -130,6 +130,34 @@ async function updateCrawlerRun(
 }
 
 /**
+ * Holt einmalig einen PHPSESSID-Cookie vom ZVG-Portal-Suchformular.
+ * Dieser Cookie ist noetig damit Detailseiten vollstaendige Daten liefern.
+ */
+async function getZvgSessionCookie(): Promise<string> {
+  try {
+    const resp = await fetch(
+      "https://www.zvg-portal.de/index.php?button=Termine%20suchen",
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; Auktivo/1.0; +https://auktivo.de)",
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "de-DE,de;q=0.9",
+        },
+      }
+    );
+    const rawCookie = resp.headers.get("set-cookie") ?? "";
+    const match = /PHPSESSID=[^;,\s]+/.exec(rawCookie);
+    if (match) {
+      console.log("[Crawler] ZVG PHP-Session etabliert:", match[0].slice(0, 18) + "...");
+      return match[0];
+    }
+  } catch (err) {
+    console.warn("[Crawler] Kein ZVG-Session-Cookie erhalten:", err instanceof Error ? err.message : String(err));
+  }
+  return "";
+}
+
+/**
  * Holt Detail-Daten (Dokumente, Grundbuch, Beschreibung, etc.) fuer alle
  * Eintraege eines Bundeslandes. Laeuft parallel mit max. DETAIL_CONCURRENCY
  * gleichzeitigen Requests, um das ZVG-Portal nicht zu ueberlasten.
@@ -140,6 +168,8 @@ async function enrichWithDetails(
   entries: ZvgEntry[]
 ): Promise<void> {
   console.log(`[Crawler] Starte Detail-Enrichment fuer ${entries.length} Eintraege...`);
+  // Session-Cookie einmalig holen - alle Detail-Requests nutzen dieselbe Session
+  const sessionCookie = await getZvgSessionCookie();
   const maxMs = calcDetailMaxMs(entries.length);
   const deadline = Date.now() + maxMs;
   const maxMinutes = Math.round(maxMs / 60_000);
@@ -162,7 +192,7 @@ async function enrichWithDetails(
     await Promise.all(
       batch.map(async (entry) => {
         try {
-          const detail = await scrapeZvgDetail(entry.zvg_id_numeric, entry.land_abk);
+          const detail = await scrapeZvgDetail(entry.zvg_id_numeric, entry.land_abk, sessionCookie);
 
           // Nur Felder updaten die tatsaechlich Daten haben
           // document_urls und auction_date nur ueberschreiben wenn Detail-Seite etwas liefert

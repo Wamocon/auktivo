@@ -54,6 +54,14 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null);
   const [pdfViewer, setPdfViewer] = useState<{ url: string; fileName: string } | null>(null);
 
+  // ZVG-Portal-URL fuer direkten Zugriff auf Dokumente und Termininfos
+  const zvgParts = (p.zvg_id ?? "").split("-");
+  const zvgLand = (zvgParts[0] ?? p.land_abk ?? "").toLowerCase();
+  const zvgNumId = zvgParts[1] ?? "";
+  const zvgPortalUrl = zvgNumId && zvgLand
+    ? `https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=${zvgNumId}&land_abk=${zvgLand}`
+    : "https://www.zvg-portal.de";
+
   async function triggerAnalysis() {
     setTriggering(true);
     setTriggerMsg(null);
@@ -162,7 +170,18 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                   })}
                 />
               ) : (
-                <DataRow label="Versteigerungstermin" value="Noch nicht bekannt gegeben" />
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-zinc-400">Versteigerungstermin</span>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Noch nicht bekannt gegeben</span>
+                  <a
+                    href={zvgPortalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
+                  >
+                    <ExternalLink className="h-3 w-3" /> Termin auf ZVG-Portal pruefen
+                  </a>
+                </div>
               )}
               <DataRow label="Status" value={formatStatus(p.status)} />
               {p.last_crawled_at && (
@@ -411,9 +430,26 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               })}
             </div>
           ) : (
-            <p className="text-sm text-zinc-500">
-              Noch keine Dokumente verfugbar. Auf dem ZVG-Portal konnen Gutachten und Beschlusse eingesehen werden.
-            </p>
+            <div className="flex flex-col items-center gap-4 py-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <FileText className="h-6 w-6 text-zinc-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Noch keine Dokumente verfugbar</p>
+                <p className="mt-1 max-w-sm text-xs leading-relaxed text-zinc-500">
+                  Gutachten und Beschlusse werden automatisch vom ZVG-Portal eingelesen.<br />
+                  Direkt auf dem ZVG-Portal sind die aktuellen Dokumente sofort einsehbar.
+                </p>
+              </div>
+              <a
+                href={zvgPortalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                <ExternalLink className="h-4 w-4" /> Dokumente auf ZVG-Portal offnen
+              </a>
+            </div>
           )}
         </div>
       )}

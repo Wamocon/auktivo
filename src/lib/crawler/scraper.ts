@@ -337,7 +337,8 @@ export interface ZvgDetailData {
  */
 export async function scrapeZvgDetail(
   zvg_id_numeric: string,
-  land_abk: string
+  land_abk: string,
+  sessionCookie?: string
 ): Promise<ZvgDetailData> {
   const url = `${BASE_URL}/index.php?button=showZvg&zvg_id=${zvg_id_numeric}&land_abk=${land_abk}`;
   const result: ZvgDetailData = {
@@ -351,9 +352,16 @@ export async function scrapeZvgDetail(
     termin: null,
   };
 
+  // ZVG-Portal-Detailseiten benoetigen eine aktive PHP-Session (vom vorherigen Listen-POST).
+  // sessionCookie wird vom Runner uebergeben (einmalig vom ZVG-Suchformular geholt).
+  const detailHeaders: Record<string, string> = {
+    Referer: `${BASE_URL}/index.php?button=Termine%20suchen`,
+  };
+  if (sessionCookie) detailHeaders["Cookie"] = sessionCookie;
+
   let html: string;
   try {
-    html = await fetchHtmlWithRetry(url, { timeoutMs: 15_000 }, 3);
+    html = await fetchHtmlWithRetry(url, { timeoutMs: 15_000, headers: detailHeaders }, 3);
   } catch {
     return result;
   }
@@ -381,8 +389,9 @@ export async function scrapeZvgDetail(
       result.versteigerungsort = value || null;
     } else if (/gl.ubiger|gl.ubigerinformation/.test(label)) {
       result.glaeubigerinfo = value !== "keine Angaben" ? value || null : null;
-    } else if (/^termin$|versteigerungstermin/.test(label)) {
+    } else if (/^termin|versteigerungstermin/.test(label)) {
       // Termin aus Detail-Seite ist praeziser (enthaelt Uhrzeit, nicht nur "offen")
+      // Regex matched: "termin", "termin(e)", "termin 1", "versteigerungstermin" etc.
       const parsed = parseTermin(value);
       if (parsed) result.termin = parsed;
     }
