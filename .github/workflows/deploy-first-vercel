@@ -20,7 +20,7 @@
 #   so there are no "team seat" errors on a personal Hobby account in a GitHub org.
 # =============================================================================
 
-name: Deploy to Vercel
+name: Deploy First to Vercel
 
 on:
   workflow_dispatch:
