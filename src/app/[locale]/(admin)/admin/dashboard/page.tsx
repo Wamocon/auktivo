@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Activity, Users, Home, TrendingUp } from "lucide-react";
+import { Activity, Users, Home, TrendingUp, FileText } from "lucide-react";
 import { CrawlerProgressPanel } from "../crawler/_components/crawler-progress-panel";
 
 export default async function AdminDashboardPage({
@@ -25,12 +25,14 @@ export default async function AdminDashboardPage({
     { count: propertyCount },
     { count: proCount },
     { count: analysisCount },
+    { count: documentCount },
     { data: recentUsers },
   ] = await Promise.all([
     admin.from("profiles").select("*", { count: "exact", head: true }),
     admin.from("properties").select("*", { count: "exact", head: true }),
     admin.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "pro"),
     admin.from("property_analyses").select("*", { count: "exact", head: true }),
+    admin.from("property_documents").select("*", { count: "exact", head: true }),
     admin
       .from("profiles")
       .select("id, full_name, email, plan, created_at")
@@ -66,6 +68,13 @@ export default async function AdminDashboardPage({
       icon: Activity,
       color: "text-purple-600",
       bg: "bg-purple-100 dark:bg-purple-900/20",
+    },
+    {
+      label: "PDF-Dokumente",
+      value: documentCount ?? 0,
+      icon: FileText,
+      color: "text-red-600",
+      bg: "bg-red-100 dark:bg-red-900/20",
     },
   ];
 

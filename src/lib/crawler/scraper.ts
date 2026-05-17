@@ -371,6 +371,27 @@ export async function scrapeZvgDetail(
     }
   }
 
+  // Vollseiten-Fallback: Alle Links der Seite auf PDFs/Dokumente pruefen
+  // (ZVG-Portal platziert Dokumentlinks manchmal ausserhalb von Tabellenzellen)
+  for (const a of root.querySelectorAll("a[href]")) {
+    const href = a.getAttribute("href") ?? "";
+    if (!href || href.startsWith("#") || href.startsWith("mailto:")) continue;
+    const linkText = normalizeText(a.text).toLowerCase();
+    const isPdf =
+      href.toLowerCase().includes(".pdf") ||
+      href.toLowerCase().includes("showdoc") ||
+      (href.toLowerCase().includes("download") && href.toLowerCase().includes("zvg")) ||
+      /bekanntmachung|expos|gutachten|beschluss|anlage/.test(linkText);
+    if (isPdf) {
+      const absoluteUrl = href.startsWith("http")
+        ? href
+        : `${BASE_URL}${href.startsWith("/") ? "" : "/"}${href}`;
+      if (!result.document_urls.includes(absoluteUrl)) {
+        result.document_urls.push(absoluteUrl);
+      }
+    }
+  }
+
   return result;
 }
 

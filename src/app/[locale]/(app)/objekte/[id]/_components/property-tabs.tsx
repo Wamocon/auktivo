@@ -149,7 +149,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               {p.address && <DataRow label="Adresse" value={p.address} />}
               {p.versteigerungsort && <DataRow label="Ort der Versteigerung" value={p.versteigerungsort} />}
               {p.glaeubigerinfo && <DataRow label="Informationen zum Glaeubiger" value={p.glaeubigerinfo} />}
-              {p.auction_date && (
+              {p.auction_date ? (
                 <DataRow
                   label="Versteigerungstermin"
                   value={new Date(p.auction_date).toLocaleDateString("de-DE", {
@@ -161,6 +161,8 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                     minute: "2-digit",
                   })}
                 />
+              ) : (
+                <DataRow label="Versteigerungstermin" value="Noch nicht bekannt gegeben" />
               )}
               <DataRow label="Status" value={formatStatus(p.status)} />
               {p.last_crawled_at && (
@@ -757,7 +759,7 @@ function formatType(type: string | null | undefined): string {
 
 function formatStatus(status: string): string {
   const map: Record<string, string> = {
-    active: "Aktiv (Termin steht)",
+    active: "Aktiv",
     withdrawn: "Zuruckgezogen",
     sold: "Versteigert",
   };
