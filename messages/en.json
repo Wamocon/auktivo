@@ -202,7 +202,20 @@
     "empty_state_hint": "e.g. Bavaria or 80539 for Munich",
     "pro_unlock": "Unlock Pro",
     "searches_month": "{used} / 5 searches this month",
-    "upgrade_pro": "Upgrade to Pro"
+    "upgrade_pro": "Upgrade to Pro",
+    "clear_filters": "Clear filters",
+    "all_objects_count": "{count} properties total",
+    "sort_date_asc": "Date ascending",
+    "sort_date_desc": "Date descending",
+    "sort_price_asc": "Price ascending",
+    "sort_price_desc": "Price descending",
+    "sort_state": "By state",
+    "grouped_view": "Grouped by state",
+    "list_view": "Card view",
+    "termin_von": "from",
+    "termin_bis": "to",
+    "court_label": "Court",
+    "court_placeholder": "e.g. Cologne"
   },
   "property": {
     "details": "Details",

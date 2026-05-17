@@ -22,6 +22,9 @@ interface CrawlerProgress {
   startedAt: string | null;
   finishedAt: string | null;
   currentLand: string | null;
+  currentStep: "scraping" | "saving" | "enriching" | null;
+  currentLandTotal: number;
+  currentLandEnriched: number;
   processedLaender: number;
   totalLaender: number;
   processedProperties: number;
@@ -121,6 +124,17 @@ export function CrawlerProgressPanel() {
     progress && progress.totalLaender > 0
       ? Math.round((progress.processedLaender / progress.totalLaender) * 100)
       : 0;
+
+  const enrichPct =
+    progress && progress.currentLandTotal > 0
+      ? Math.round((progress.currentLandEnriched / progress.currentLandTotal) * 100)
+      : 0;
+
+  const stepLabel: Record<NonNullable<CrawlerProgress["currentStep"]>, string> = {
+    scraping: "Abruf",
+    saving: "Speichern",
+    enriching: "Anreichern",
+  };
 
   const isRunning = progress?.phase === "running";
   const isPaused = progress?.phase === "paused";
@@ -229,9 +243,14 @@ export function CrawlerProgressPanel() {
             <div className="flex items-center justify-between text-xs text-zinc-500">
               <span>
                 {isRunning && progress.currentLand ? (
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1.5">
                     <MapPin className="h-3 w-3" />
                     {progress.currentLand}
+                    {progress.currentStep && (
+                      <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                        {stepLabel[progress.currentStep]}
+                      </span>
+                    )}
                   </span>
                 ) : isPaused ? (
                   <span className="flex items-center gap-1 text-amber-600">
@@ -266,6 +285,24 @@ export function CrawlerProgressPanel() {
                 ref={(el) => { if (el) el.style.width = `${pct}%`; }}
               />
             </div>
+
+            {/* Detail-Enrichment-Fortschritt pro Bundesland */}
+            {isRunning && progress.currentStep === "enriching" && progress.currentLandTotal > 0 && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>
+                    {progress.currentLand}: {progress.currentLandEnriched} / {progress.currentLandTotal} angereichert
+                  </span>
+                  <span className="font-medium text-blue-600">{enrichPct}%</span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                    ref={(el) => { if (el) el.style.width = `${enrichPct}%`; }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Statistik-Kacheln */}

@@ -200,7 +200,7 @@ export function AdminSettingsClient({ initialSettings }: Props) {
   ];
 
   return (
-    <div className="flex min-h-[600px] overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex min-h-150 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       {/* Sidebar */}
       <aside className="flex w-56 shrink-0 flex-col border-r border-zinc-200 dark:border-zinc-800">
         {/* Header */}

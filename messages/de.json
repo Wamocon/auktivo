@@ -204,7 +204,20 @@
     "empty_state_hint": "z.B. Bayern oder 80539 für München",
     "pro_unlock": "Pro freischalten",
     "searches_month": "{used} / 5 Suchen diesen Monat",
-    "upgrade_pro": "Upgrade auf Pro"
+    "upgrade_pro": "Upgrade auf Pro",
+    "clear_filters": "Filter zurücksetzen",
+    "all_objects_count": "{count} Objekte gesamt",
+    "sort_date_asc": "Termin aufsteigend",
+    "sort_date_desc": "Termin absteigend",
+    "sort_price_asc": "Preis aufsteigend",
+    "sort_price_desc": "Preis absteigend",
+    "sort_state": "Nach Bundesland",
+    "grouped_view": "Gruppiert nach Bundesland",
+    "list_view": "Kartenansicht",
+    "termin_von": "ab",
+    "termin_bis": "bis",
+    "court_label": "Amtsgericht",
+    "court_placeholder": "z. B. Köln"
   },
   "property": {
     "details": "Details",

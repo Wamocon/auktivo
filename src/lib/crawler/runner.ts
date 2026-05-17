@@ -9,11 +9,21 @@ import type { Property, SearchAlert } from "@/lib/types/database";
 export { getCrawlerProgress };
 
 const RATE_LIMIT_MS = 2_000;    // 2 Sekunden zwischen Bundeslaender-Requests
-const UPSERT_BATCH_SIZE = 50;   // Eintraege pro Supabase-Batch-Request
-const BATCH_PAUSE_MS = 300;     // Pause zwischen Batch-Upserts (300ms - gibt Event-Loop mehr Raum)
-const DETAIL_CONCURRENCY = 5;   // Parallele Detail-Page-Requests
-const DETAIL_PAUSE_MS = 200;    // Pause zwischen Detail-Batches
-const DETAIL_MAX_MINUTES = 4;   // Max. Minuten fuer Detail-Enrichment pro Bundesland
+const UPSERT_BATCH_SIZE = 20;   // Eintraege pro Supabase-Batch-Request (20 statt 50 - robuster)
+const BATCH_PAUSE_MS = 800;     // Pause zwischen Batch-Upserts (800ms - schuetzt Supabase)
+const DETAIL_CONCURRENCY = 3;   // Parallele Detail-Page-Requests (3 statt 5, robuster gegen Rate-Limits)
+const DETAIL_PAUSE_MS = 500;    // Pause zwischen Detail-Batches (500ms, schonender fuer ZVG-Portal)
+const UPSERT_MAX_RETRIES = 3;   // Max. Wiederholungsversuche bei Supabase-Netzwerkfehler
+
+/**
+ * Berechnet das dynamische Zeitlimit fuer das Detail-Enrichment eines Bundeslandes.
+ * Groessere Laender (z.B. NW mit 460 Objekten) bekommen proportional mehr Zeit.
+ * Formel: max(5 Min, ceil(entries / 30)) - ca. 2 Sek. pro Objekt bei Concurrency=3
+ */
+function calcDetailMaxMs(entryCount: number): number {
+  const minutesNeeded = Math.max(5, Math.ceil(entryCount / 30));
+  return minutesNeeded * 60 * 1_000;
+}
 
 /**
  * Gibt den Event-Loop frei. Wichtig: Der Crawler laeuft auf demselben Node.js-Thread
@@ -30,12 +40,23 @@ function sleep(ms: number) {
 
 /**
  * Upserted mehrere Eintraege in einem einzigen Supabase-Request.
- * Reduziert die Anzahl der Netzwerk-Roundtrips drastisch.
+ * Bei Netzwerkfehler: bis zu UPSERT_MAX_RETRIES Wiederholungen mit Backoff.
+ * Bei anhaltendem Fehler: rekursive Halbierung des Batches (divide-and-conquer).
  */
 async function upsertBatch(
   admin: ReturnType<typeof createAdminClient>,
-  entries: ZvgEntry[]
+  entries: ZvgEntry[],
+  attempt = 1
 ): Promise<{ inserted: number; skipped: number }> {
+  // Rekursive Halbierung nach erschoepften Retries (divide-and-conquer)
+  if (entries.length > 1 && attempt > UPSERT_MAX_RETRIES) {
+    const mid = Math.ceil(entries.length / 2);
+    console.warn(`[Crawler] Teile Batch auf: ${entries.length} -> 2x ${mid}`);
+    const left = await upsertBatch(admin, entries.slice(0, mid), 1);
+    const right = await upsertBatch(admin, entries.slice(mid), 1);
+    return { inserted: left.inserted + right.inserted, skipped: left.skipped + right.skipped };
+  }
+
   const now = new Date().toISOString();
   const rows = entries.map((entry) => ({
     zvg_id: entry.zvg_id,
@@ -63,8 +84,23 @@ async function upsertBatch(
     .upsert(rows, { onConflict: "zvg_id", ignoreDuplicates: false });
 
   if (error) {
+    if (attempt <= UPSERT_MAX_RETRIES) {
+      const waitMs = attempt * 2_000;
+      console.warn(
+        `[Crawler] Batch-Upsert Versuch ${attempt}/${UPSERT_MAX_RETRIES} fehlgeschlagen ` +
+        `(${entries.length} Eintraege): ${error.message} - warte ${waitMs}ms...`
+      );
+      await sleep(waitMs);
+      return upsertBatch(admin, entries, attempt + 1);
+    }
+    // Einzelner Eintrag schlaegt fehl -> als skipped zaehlen
+    if (entries.length === 1) {
+      console.error(`[Crawler] Einzel-Upsert dauerhaft fehlgeschlagen: ${entries[0].zvg_id}`);
+      return { inserted: 0, skipped: 1 };
+    }
+    // Mehrere Eintraege -> bereits in rekursiver Halbierung (sollte nicht erreicht werden)
     console.error(
-      `[Crawler] Batch-Upsert-Fehler (${entries.length} Eintraege):`,
+      `[Crawler] Batch-Upsert dauerhaft fehlgeschlagen (${entries.length} Eintraege):`,
       error.message
     );
     return { inserted: 0, skipped: entries.length };
@@ -104,14 +140,18 @@ async function enrichWithDetails(
   entries: ZvgEntry[]
 ): Promise<void> {
   console.log(`[Crawler] Starte Detail-Enrichment fuer ${entries.length} Eintraege...`);
-  const deadline = Date.now() + DETAIL_MAX_MINUTES * 60 * 1_000;
+  const maxMs = calcDetailMaxMs(entries.length);
+  const deadline = Date.now() + maxMs;
+  const maxMinutes = Math.round(maxMs / 60_000);
+
+  let enrichedCount = 0;
 
   for (let i = 0; i < entries.length; i += DETAIL_CONCURRENCY) {
     // Zeitlimit und Abort-Signal pruefen
     if (getCrawlerProgress().controlSignal === "abort") break;
     if (Date.now() > deadline) {
       console.warn(
-        `[Crawler] Detail-Enrichment nach ${DETAIL_MAX_MINUTES} Min. abgebrochen ` +
+        `[Crawler] Detail-Enrichment nach ${maxMinutes} Min. abgebrochen ` +
         `(${i}/${entries.length} verarbeitet)`
       );
       break;
@@ -123,17 +163,28 @@ async function enrichWithDetails(
       batch.map(async (entry) => {
         try {
           const detail = await scrapeZvgDetail(entry.zvg_id_numeric, entry.land_abk);
+
+          // Nur Felder updaten die tatsaechlich Daten haben
+          // document_urls und auction_date nur ueberschreiben wenn Detail-Seite etwas liefert
+          const updateFields: Record<string, unknown> = {
+            art_versteigerung: detail.art_versteigerung,
+            grundbuch: detail.grundbuch,
+            beschreibung: detail.beschreibung,
+            versteigerungsort: detail.versteigerungsort,
+            glaeubigerinfo: detail.glaeubigerinfo,
+            geoserver_url: detail.geoserver_url,
+          };
+          if (detail.document_urls.length > 0) {
+            updateFields.document_urls = detail.document_urls;
+          }
+          // auction_date: Detail-Seite hat praezisere Uhrzeit - nur ueberschreiben wenn gefunden
+          if (detail.termin) {
+            updateFields.auction_date = detail.termin.toISOString();
+          }
+
           await admin
             .from("properties")
-            .update({
-              art_versteigerung: detail.art_versteigerung,
-              grundbuch: detail.grundbuch,
-              beschreibung: detail.beschreibung,
-              versteigerungsort: detail.versteigerungsort,
-              glaeubigerinfo: detail.glaeubigerinfo,
-              geoserver_url: detail.geoserver_url,
-              document_urls: detail.document_urls,
-            })
+            .update(updateFields)
             .eq("zvg_id", entry.zvg_id);
 
           // Dokument-URLs als ausstehende OCR-Jobs registrieren
@@ -157,16 +208,22 @@ async function enrichWithDetails(
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error(`[Crawler] Detail-Fehler ${entry.zvg_id}:`, msg);
+        } finally {
+          enrichedCount++;
         }
       })
     );
 
+    // Fortschritt nach jedem Batch aktualisieren
+    setCrawlerProgress({ currentLandEnriched: enrichedCount });
+
     if (i + DETAIL_CONCURRENCY < entries.length) {
       await sleep(DETAIL_PAUSE_MS);
     }
+    await yieldToEventLoop();
   }
 
-  console.log(`[Crawler] Detail-Enrichment abgeschlossen`);
+  console.log(`[Crawler] Detail-Enrichment abgeschlossen (${enrichedCount}/${entries.length})`);
 }
 
 /**
@@ -335,12 +392,23 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
     }
 
     console.log(`[Crawler] Scrape ${land.name} (${land.short})...`);
-    setCrawlerProgress({ currentLand: land.name });
+    setCrawlerProgress({
+      currentLand: land.name,
+      currentStep: "scraping",
+      currentLandTotal: 0,
+      currentLandEnriched: 0,
+    });
 
     try {
       const entries = await scrapeZvgLand(land);
       console.log(`[Crawler] ${land.name}: ${entries.length} Objekte gefunden`);
       totalScraped += entries.length;
+
+      // Gefundene Anzahl sofort in State schreiben (UI-Feedback)
+      setCrawlerProgress({
+        currentLandTotal: entries.length,
+        currentStep: "saving",
+      });
 
       // Phase 1: Batch-Upsert der Listendaten
       let processedInLand = 0;
@@ -373,6 +441,7 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       // Phase 2: Detail-Enrichment (Dokumente, Grundbuch, Beschreibung, etc.)
       // Nur starten wenn kein Abort-Signal
       if (getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
+        setCrawlerProgress({ currentStep: "enriching" });
         await enrichWithDetails(admin, entries);
       }
 
@@ -390,7 +459,10 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       setCrawlerProgress({ errors: totalErrors, lastError: message, lastErrorLand: land.name });
     }
 
-    setCrawlerProgress({ processedLaender: BUNDESLAENDER.indexOf(land) + 1 });
+    setCrawlerProgress({
+      processedLaender: BUNDESLAENDER.indexOf(land) + 1,
+      currentStep: null,
+    });
 
     // Rate limiting - ZVG-Portal nicht ueberlasten
     if (land !== BUNDESLAENDER[BUNDESLAENDER.length - 1]) {

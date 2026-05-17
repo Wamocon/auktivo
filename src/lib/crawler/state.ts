@@ -11,6 +11,12 @@ export interface CrawlerProgress {
   startedAt: string | null;
   finishedAt: string | null;
   currentLand: string | null;
+  /** Aktueller Schritt innerhalb eines Bundeslandes */
+  currentStep: "scraping" | "saving" | "enriching" | null;
+  /** Anzahl gefundener Objekte im aktuellen Bundesland */
+  currentLandTotal: number;
+  /** Anzahl bereits angereicherter Objekte im aktuellen Bundesland (Detail-Enrichment) */
+  currentLandEnriched: number;
   processedLaender: number;
   totalLaender: number;
   processedProperties: number;
@@ -27,6 +33,9 @@ const initial: CrawlerProgress = {
   startedAt: null,
   finishedAt: null,
   currentLand: null,
+  currentStep: null,
+  currentLandTotal: 0,
+  currentLandEnriched: 0,
   processedLaender: 0,
   totalLaender: 16,
   processedProperties: 0,

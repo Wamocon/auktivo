@@ -19,7 +19,7 @@ const LAND_FULLNAME: Record<string, string> = Object.fromEntries(
 
 const ZVG_ID_REGEX = /zvg_id=(\d+)/;
 const TERMIN_REGEX =
-  /(\d{2})\.(\d{2})\.(\d{4})[,\s]+(\d{2}):(\d{2})/;
+  /(\d{2})\.(\d{2})\.(\d{4})(?:[,\s]+(\d{2}):(\d{2}))?/;
 const PLZ_ORT_REGEX = /(\d{5})\s+([\wÄÖÜäöüß\s\-]+?)(?:,|$)/;
 
 // ---------------------------------------------------------------
@@ -30,7 +30,7 @@ async function fetchHtml(
   url: string,
   options?: RequestInit & { timeoutMs?: number }
 ): Promise<string> {
-  const { timeoutMs = 10_000, ...fetchOptions } = options ?? {};
+  const { timeoutMs = 15_000, ...fetchOptions } = options ?? {};
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -51,12 +51,55 @@ async function fetchHtml(
       throw new Error(`HTTP ${response.status} fuer ${url}`);
     }
 
-    // ZVG-Portal sendet ISO-8859-1
     const buffer = await response.arrayBuffer();
-    return new TextDecoder("iso-8859-1").decode(buffer);
+
+    // Charset-Erkennung:
+    // 1. Versuche UTF-8 mit "fatal: true" - schlaegt fehl wenn Bytes kein gueltiges UTF-8 sind
+    //    (z.B. bei echten ISO-8859-1-Seiten mit Bytes wie 0xE4 fuer ae)
+    // 2. Fallback: ISO-8859-1 (Latin-1) fuer aeltere ZVG-Portal-Seiten
+    //
+    // WICHTIG: Neuere ZVG-Landesportale senden UTF-8, deklarieren aber keinen Charset-Header
+    // oder haben ein altes Meta-Tag "iso-8859-1". Die fatal-Mode-Heuristik erkennt das korrekt:
+    // - UTF-8-Bytes (0xC3 0xA4 fuer ae) sind valid UTF-8 → TextDecoder gibt "ae" aus
+    // - ISO-8859-1-Bytes (0xE4 fuer ae) sind KEIN gueltiges UTF-8-Multibyte → wirft Error
+    let decoded: string;
+    try {
+      decoded = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    } catch {
+      decoded = new TextDecoder("iso-8859-1").decode(buffer);
+    }
+    return decoded;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Wie fetchHtml, aber mit automatischen Wiederholungsversuchen bei Netzwerkfehlern.
+ * Nutzt exponentiellen Backoff: 2s, 4s, 6s zwischen den Versuchen.
+ */
+async function fetchHtmlWithRetry(
+  url: string,
+  options?: RequestInit & { timeoutMs?: number },
+  maxAttempts = 3
+): Promise<string> {
+  let lastError: Error = new Error("Unbekannter Fehler");
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fetchHtml(url, options);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < maxAttempts) {
+        const waitMs = attempt * 2_000;
+        console.warn(
+          `[Scraper] Versuch ${attempt}/${maxAttempts} fehlgeschlagen fuer ${url.slice(0, 80)} ` +
+          `(${lastError.message}) - warte ${waitMs}ms...`
+        );
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
+    }
+  }
+  throw lastError;
 }
 
 function detectPropertyType(objekt_lage: string): CrawlerPropertyType {
@@ -114,11 +157,11 @@ function parseVerkehrswert(raw: string): number | null {
 }
 
 function parseTermin(raw: string): Date | null {
+  // Erlaubt: DD.MM.YYYY, HH:MM  ODER  DD.MM.YYYY (ohne Uhrzeit)
   const match = TERMIN_REGEX.exec(raw);
   if (!match) return null;
   const [, day, month, year, hour, minute] = match;
-  // Erstelle UTC-Datum (Amtsgerichte in Deutschland = CET/CEST)
-  const isoStr = `${year}-${month}-${day}T${hour}:${minute}:00+01:00`;
+  const isoStr = `${year}-${month}-${day}T${hour ?? "10"}:${minute ?? "00"}:00+01:00`;
   const date = new Date(isoStr);
   return isNaN(date.getTime()) ? null : date;
 }
@@ -284,6 +327,8 @@ export interface ZvgDetailData {
   glaeubigerinfo: string | null;
   geoserver_url: string | null;
   document_urls: string[];
+  /** Versteigerungstermin aus der Detailseite (praeziser als Listenseite) */
+  termin: Date | null;
 }
 
 /**
@@ -303,11 +348,12 @@ export async function scrapeZvgDetail(
     glaeubigerinfo: null,
     geoserver_url: null,
     document_urls: [],
+    termin: null,
   };
 
   let html: string;
   try {
-    html = await fetchHtml(url, { timeoutMs: 8_000 }); // kurzes Timeout fuer Detail-Seiten
+    html = await fetchHtmlWithRetry(url, { timeoutMs: 15_000 }, 3);
   } catch {
     return result;
   }
@@ -335,6 +381,10 @@ export async function scrapeZvgDetail(
       result.versteigerungsort = value || null;
     } else if (/gl.ubiger|gl.ubigerinformation/.test(label)) {
       result.glaeubigerinfo = value !== "keine Angaben" ? value || null : null;
+    } else if (/^termin$|versteigerungstermin/.test(label)) {
+      // Termin aus Detail-Seite ist praeziser (enthaelt Uhrzeit, nicht nur "offen")
+      const parsed = parseTermin(value);
+      if (parsed) result.termin = parsed;
     }
 
     // GeoServer-Link
@@ -348,14 +398,18 @@ export async function scrapeZvgDetail(
     for (const a of valueCell.querySelectorAll("a")) {
       const href = a.getAttribute("href") ?? "";
       const linkText = normalizeText(a.text).toLowerCase();
+      const hrefLower = href.toLowerCase();
 
       const isPdf =
-        href.toLowerCase().includes(".pdf") ||
-        href.toLowerCase().includes("showdoc") ||
-        href.toLowerCase().includes("download") ||
-        /bekanntmachung|expos|gutachten|beschluss|dokument|anlage/.test(linkText);
+        hrefLower.includes(".pdf") ||
+        // ZVG-Portal-Dokument-Links: button=showDoc oder button=showZvgDoc
+        /button=show(doc|zvgdoc)/i.test(href) ||
+        hrefLower.includes("showdoc") ||
+        hrefLower.includes("download") ||
+        // Link-Text-Patterns
+        /bekanntmachung|expos|gutachten|beschluss|dokument|anlage|verkuendung/.test(linkText);
 
-      if (isPdf && href) {
+      if (isPdf && href && !href.startsWith("#") && !href.startsWith("mailto:")) {
         let absoluteUrl: string;
         if (href.startsWith("http")) {
           absoluteUrl = href;
@@ -377,11 +431,13 @@ export async function scrapeZvgDetail(
     const href = a.getAttribute("href") ?? "";
     if (!href || href.startsWith("#") || href.startsWith("mailto:")) continue;
     const linkText = normalizeText(a.text).toLowerCase();
+    const hrefLower = href.toLowerCase();
     const isPdf =
-      href.toLowerCase().includes(".pdf") ||
-      href.toLowerCase().includes("showdoc") ||
-      (href.toLowerCase().includes("download") && href.toLowerCase().includes("zvg")) ||
-      /bekanntmachung|expos|gutachten|beschluss|anlage/.test(linkText);
+      hrefLower.includes(".pdf") ||
+      /button=show(doc|zvgdoc)/i.test(href) ||
+      hrefLower.includes("showdoc") ||
+      (hrefLower.includes("download") && hrefLower.includes("zvg")) ||
+      /bekanntmachung|expos|gutachten|beschluss|anlage|verkuendung/.test(linkText);
     if (isPdf) {
       const absoluteUrl = href.startsWith("http")
         ? href
@@ -427,14 +483,15 @@ export async function scrapeZvgLand(land: ZvgLand): Promise<ZvgEntry[]> {
     btermin: "",
   });
 
-  const html = await fetchHtml(`${url}?${params.toString()}`, {
+  const html = await fetchHtmlWithRetry(`${url}?${params.toString()}`, {
     method: "POST",
     body: body.toString(),
+    timeoutMs: 60_000, // 60s: Listenseiten koennen gross sein (NW hat 460+ Eintraege)
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Referer: `${BASE_URL}/index.php?button=Termine%20suchen`,
     },
-  });
+  }, 3); // 3 Versuche mit Backoff
 
   // Event-Loop freigeben bevor synchrones HTML-Parsing
   await yieldToEventLoop();

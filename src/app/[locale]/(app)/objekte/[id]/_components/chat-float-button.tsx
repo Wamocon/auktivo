@@ -109,8 +109,7 @@ export function ChatFloatButton({ propertyId, locale, isPro }: ChatFloatButtonPr
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
       {/* Chat-Popup */}
       {chatOpen && isPro && (
-        <div className="flex w-[380px] flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
-          style={{ height: "520px" }}>
+        <div className="flex w-95 h-130 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
             <div className="flex items-center gap-2">

@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Search, Filter, Lock, Loader2, MapPin, Building2, Calendar, TrendingUp, Euro, Map } from "lucide-react";
+import {
+  Search, Filter, Lock, Loader2, MapPin, Building2, Calendar,
+  TrendingUp, Euro, Map, ChevronDown, ChevronRight, X, ArrowUpDown,
+  LayoutGrid, Layers, RotateCcw,
+} from "lucide-react";
 import { RiskBadge } from "@/components/ui/risk-badge";
 import { PropertyModal } from "./property-modal";
 import { daysUntil } from "@/lib/utils/date";
@@ -115,64 +119,158 @@ function PropertyCard({
 export function SearchClient({ profile, locale }: SearchClientProps) {
   const t = useTranslations("search");
   const isPro = profile?.plan === "pro";
+  const initialLoadDone = useRef(false);
 
+  // Filter-State
   const [zip, setZip] = useState("");
   const [bundesland, setBundesland] = useState("");
   const [radius, setRadius] = useState<number>(25);
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [budgetMin, setBudgetMin] = useState<string>("");
   const [budgetMax, setBudgetMax] = useState<string>("");
+  const [terminVon, setTerminVon] = useState("");
+  const [terminBis, setTerminBis] = useState("");
+  const [sortBy, setSortBy] = useState("auction_date_asc");
+  const [court, setCourt] = useState("");
+
+  // UI-State
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<PropertyWithAnalysis[]>([]);
   const [searched, setSearched] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<PropertyWithAnalysis | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "grouped">("grouped");
+  const [openStates, setOpenStates] = useState<Set<string>>(new Set());
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  const executeSearch = useCallback(async (overrides?: {
+    zip?: string; bundesland?: string; radius?: number; propertyTypes?: PropertyType[];
+    budgetMin?: string; budgetMax?: string; terminVon?: string; terminBis?: string;
+    sortBy?: string; court?: string;
+  }) => {
     setLoading(true);
     setErrorMsg(null);
     setLimitReached(false);
 
+    const z    = overrides?.zip            ?? zip;
+    const bl   = overrides?.bundesland     ?? bundesland;
+    const r    = overrides?.radius         ?? radius;
+    const pt   = overrides?.propertyTypes  ?? propertyTypes;
+    const bMin = overrides?.budgetMin      ?? budgetMin;
+    const bMax = overrides?.budgetMax      ?? budgetMax;
+    const tv   = overrides?.terminVon      ?? terminVon;
+    const tb   = overrides?.terminBis      ?? terminBis;
+    const sb   = overrides?.sortBy         ?? sortBy;
+    const ct   = overrides?.court          ?? court;
+
     const params = new URLSearchParams();
-    if (zip) params.set("zip", zip);
-    if (bundesland) params.set("bundesland", bundesland);
-    params.set("radius", String(radius));
-    if (propertyTypes.length) params.set("types", propertyTypes.join(","));
-    if (budgetMin) params.set("budget_min", budgetMin);
-    if (budgetMax) params.set("budget_max", budgetMax);
+    if (z)       params.set("zip", z);
+    if (bl)      params.set("bundesland", bl);
+    params.set("radius", String(r));
+    if (pt.length)  params.set("types", pt.join(","));
+    if (bMin)    params.set("budget_min", bMin);
+    if (bMax)    params.set("budget_max", bMax);
+    if (tv)      params.set("termin_von", tv);
+    if (tb)      params.set("termin_bis", tb);
+    params.set("sort_by", sb);
+    if (ct)      params.set("court", ct);
 
-    const res = await fetch(`/api/search?${params.toString()}`);
-    const data = await res.json() as { properties?: PropertyWithAnalysis[]; limitReached?: boolean; error?: string };
+    try {
+      const res = await fetch(`/api/search?${params.toString()}`);
+      const data = await res.json() as {
+        properties?: PropertyWithAnalysis[];
+        limitReached?: boolean;
+        error?: string;
+        isOpenSearch?: boolean;
+      };
 
-    if (data.limitReached) { setLimitReached(true); }
-    else if (data.error) { setErrorMsg(data.error); }
-    else { setResults(data.properties ?? []); }
+      if (data.limitReached) {
+        setLimitReached(true);
+      } else if (data.error) {
+        setErrorMsg(data.error);
+      } else {
+        const props = data.properties ?? [];
+        setResults(props);
+        // Alle Bundeslaender automatisch aufklappen bei <= 100 Ergebnissen
+        if (props.length <= 100) {
+          setOpenStates(new Set(props.map((p) => p.state ?? "Unbekannt")));
+        }
+      }
+    } catch {
+      setErrorMsg("Verbindungsfehler. Bitte erneut versuchen.");
+    }
 
     setSearched(true);
     setLoading(false);
+  }, [zip, bundesland, radius, propertyTypes, budgetMin, budgetMax, terminVon, terminBis, sortBy, court]);
+
+  // Beim ersten Rendern: alle Objekte ohne Filter laden (kostenlos)
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      void executeSearch({ zip: "", bundesland: "", propertyTypes: [], budgetMin: "", budgetMax: "", terminVon: "", terminBis: "", court: "" });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    await executeSearch();
   }
 
-  const canSearch = zip.length > 0 || bundesland.length > 0;
+  function resetFilters() {
+    setZip(""); setBundesland(""); setRadius(25); setPropertyTypes([]);
+    setBudgetMin(""); setBudgetMax(""); setTerminVon(""); setTerminBis("");
+    setCourt(""); setSortBy("auction_date_asc");
+    void executeSearch({ zip: "", bundesland: "", propertyTypes: [], budgetMin: "", budgetMax: "", terminVon: "", terminBis: "", court: "", sortBy: "auction_date_asc" });
+  }
+
+  const hasActiveFilters = !!(zip || bundesland || propertyTypes.length > 0 || budgetMin || budgetMax || terminVon || terminBis || court);
+
+  // Gruppierung nach Bundesland
+  const grouped: Record<string, PropertyWithAnalysis[]> = {};
+  for (const p of results) {
+    const key = p.state ?? "Unbekannt";
+    (grouped[key] ??= []).push(p);
+  }
+  const groupedStates = Object.keys(grouped).sort((a, b) => a.localeCompare(b, "de"));
+
+  function toggleState(state: string) {
+    setOpenStates((prev) => {
+      const next = new Set(prev);
+      if (next.has(state)) next.delete(state); else next.add(state);
+      return next;
+    });
+  }
 
   const propertyTypeOptions: { value: PropertyType; label: string }[] = [
-    { value: "house", label: t("property_types.house") },
-    { value: "apartment", label: t("property_types.apartment") },
+    { value: "house",      label: t("property_types.house") },
+    { value: "apartment",  label: t("property_types.apartment") },
     { value: "commercial", label: t("property_types.commercial") },
-    { value: "land", label: t("property_types.land") },
+    { value: "land",       label: t("property_types.land") },
   ];
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      {/* ─── Sidebar ─── */}
       <aside className="lg:col-span-1">
         <form
           onSubmit={handleSearch}
           className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:ring-white/5"
         >
-          <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
-            <Filter className="h-4 w-4 text-brand-500" /> Filter
-          </h2>
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
+              <Filter className="h-4 w-4 text-brand-500" /> Filter
+            </h2>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+              >
+                <RotateCcw className="h-3 w-3" /> {t("clear_filters")}
+              </button>
+            )}
+          </div>
 
           <div className="flex flex-col gap-4">
             {/* Bundesland */}
@@ -193,7 +291,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </select>
             </div>
 
-            {/* PLZ + Umkreis */}
+            {/* PLZ */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("zip_label")}</label>
               <input
@@ -202,10 +300,11 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
                 onChange={(e) => setZip(e.target.value)}
                 placeholder={t("zip_placeholder")}
                 maxLength={5}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:focus:bg-zinc-800"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
               />
             </div>
 
+            {/* Umkreis */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("radius")}</label>
               <div className="grid grid-cols-4 gap-1">
@@ -214,9 +313,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
                     key={r}
                     type="button"
                     onClick={() => setRadius(r)}
-                    className={`rounded-lg py-1.5 text-xs font-semibold transition-colors ${
-                      radius === r ? "bg-brand-500 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
-                    }`}
+                    className={`rounded-lg py-1.5 text-xs font-semibold transition-colors ${radius === r ? "bg-brand-500 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"}`}
                   >
                     {r}km
                   </button>
@@ -224,29 +321,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </div>
             </div>
 
-            {/* Budget */}
-            <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                <Euro className="h-3.5 w-3.5" /> {t("budget_label")}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  placeholder="Min EUR"
-                  value={budgetMin}
-                  onChange={(e) => setBudgetMin(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                />
-                <input
-                  type="number"
-                  placeholder="Max EUR"
-                  value={budgetMax}
-                  onChange={(e) => setBudgetMax(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                />
-              </div>
-            </div>
-
+            {/* Objekttyp */}
             <div>
               <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("property_type")}</label>
               <div className="flex flex-col gap-2">
@@ -257,7 +332,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
                       checked={propertyTypes.includes(value)}
                       onChange={(e) => {
                         if (e.target.checked) setPropertyTypes([...propertyTypes, value]);
-                        else setPropertyTypes(propertyTypes.filter((t) => t !== value));
+                        else setPropertyTypes(propertyTypes.filter((v) => v !== value));
                       }}
                       className="h-4 w-4 rounded border-zinc-300 text-brand-500 focus:ring-brand-500 dark:border-zinc-600"
                     />
@@ -267,6 +342,53 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </div>
             </div>
 
+            {/* Budget */}
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <Euro className="h-3.5 w-3.5" /> {t("budget_label")}
+              </label>
+              <div className="flex gap-2">
+                <input type="number" placeholder="Min EUR" value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" />
+                <input type="number" placeholder="Max EUR" value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" />
+              </div>
+            </div>
+
+            {/* Termin (von/bis) */}
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <Calendar className="h-3.5 w-3.5" /> {t("date_range")}
+              </label>
+              <div className="flex flex-col gap-2">
+                <div>
+                  <span className="mb-0.5 block text-[10px] text-zinc-400">{t("termin_von")}</span>
+                  <input type="date" value={terminVon} onChange={(e) => setTerminVon(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" />
+                </div>
+                <div>
+                  <span className="mb-0.5 block text-[10px] text-zinc-400">{t("termin_bis")}</span>
+                  <input type="date" value={terminBis} onChange={(e) => setTerminBis(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm outline-none transition-all focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50" />
+                </div>
+              </div>
+            </div>
+
+            {/* Amtsgericht */}
+            <div>
+              <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <MapPin className="h-3.5 w-3.5" /> {t("court_label")}
+              </label>
+              <input
+                type="text"
+                value={court}
+                onChange={(e) => setCourt(e.target.value)}
+                placeholder={t("court_placeholder")}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+              />
+            </div>
+
+            {/* Risikostufe (Pro-Feature) */}
             <div className="relative">
               <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 {t("risk_level")}
@@ -282,14 +404,14 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </div>
               {!isPro && (
                 <Link href="/upgrade" className="absolute inset-0 flex items-center justify-center gap-1.5 rounded-xl bg-zinc-100/90 text-xs font-semibold text-brand-600 backdrop-blur-sm dark:bg-zinc-800/90">
-                <TrendingUp className="h-3 w-3" /> {t("pro_unlock")}
+                  <TrendingUp className="h-3 w-3" /> {t("pro_unlock")}
                 </Link>
               )}
             </div>
 
             <button
               type="submit"
-              disabled={loading || !canSearch}
+              disabled={loading}
               className="flex items-center justify-center gap-2 rounded-full bg-zinc-900 py-3 text-sm font-bold text-white shadow-sm transition-all hover:bg-zinc-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -316,7 +438,56 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
         )}
       </aside>
 
+      {/* ─── Ergebnisse ─── */}
       <div className="lg:col-span-3">
+
+        {/* Toolbar: Anzahl + Sortierung + Ansichtswechsel */}
+        {searched && !loading && results.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium text-zinc-500">
+              {hasActiveFilters
+                ? t("results", { count: results.length })
+                : t("all_objects_count", { count: results.length })}
+            </p>
+            <div className="flex items-center gap-2">
+              {/* Sortierung */}
+              <div className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900">
+                <ArrowUpDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-xs text-zinc-700 outline-none dark:text-zinc-300"
+                >
+                  <option value="auction_date_asc">{t("sort_date_asc")}</option>
+                  <option value="auction_date_desc">{t("sort_date_desc")}</option>
+                  <option value="price_asc">{t("sort_price_asc")}</option>
+                  <option value="price_desc">{t("sort_price_desc")}</option>
+                  <option value="state">{t("sort_state")}</option>
+                </select>
+              </div>
+              {/* Ansichtswechsel */}
+              <div className="flex overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <button
+                  type="button"
+                  title={t("grouped_view")}
+                  onClick={() => setViewMode("grouped")}
+                  className={`px-3 py-1.5 transition-colors ${viewMode === "grouped" ? "bg-zinc-900 text-white dark:bg-brand-500" : "bg-white text-zinc-500 hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"}`}
+                >
+                  <Layers className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  title={t("list_view")}
+                  onClick={() => setViewMode("grid")}
+                  className={`px-3 py-1.5 transition-colors ${viewMode === "grid" ? "bg-zinc-900 text-white dark:bg-brand-500" : "bg-white text-zinc-500 hover:bg-zinc-50 dark:bg-zinc-900 dark:hover:bg-zinc-800"}`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {limitReached && (
           <div className="mb-4 flex items-start gap-3 rounded-xl border-l-4 border-amber-400 bg-amber-50 p-4 dark:border-amber-500/50 dark:bg-amber-900/10">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -328,44 +499,115 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
         )}
 
         {errorMsg && (
-          <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200 dark:bg-red-900/10 dark:text-red-400 dark:ring-red-800/40">
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-red-50 p-4 text-sm text-red-700 ring-1 ring-red-200 dark:bg-red-900/10 dark:text-red-400 dark:ring-red-800/40">
+            <X className="h-4 w-4 shrink-0" />
             {errorMsg}
           </div>
         )}
 
-        {searched && !limitReached && !errorMsg && (
-          <p className="mb-4 text-sm font-medium text-zinc-500">{t("results", { count: results.length })}</p>
-        )}
-
-        {!searched && !loading && (
-          <div className="flex h-64 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-              <Search className="h-5 w-5 text-zinc-400" />
-            </div>
-            <p className="text-sm font-medium text-zinc-500">{t("empty_state_title")}</p>
-            <p className="text-xs text-zinc-400">{t("empty_state_hint")}</p>
+        {loading && (
+          <div className="flex h-64 flex-col items-center justify-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+            <p className="text-sm text-zinc-500">{t("loading")}</p>
           </div>
         )}
 
-        {searched && results.length === 0 && !limitReached && !errorMsg && (
+        {searched && !loading && results.length === 0 && !limitReached && !errorMsg && (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
             <p className="text-sm font-medium text-zinc-500">{t("no_results")}</p>
             <p className="text-xs text-zinc-400">{t("no_results_hint")}</p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {results.map((property) => (
-            <PropertyCard
-              key={property.id}
-              property={property}
-              onSelect={() => setSelectedProperty(property)}
-            />
-          ))}
-        </div>
+        {/* ── Gruppierte Ansicht nach Bundesland ── */}
+        {searched && !loading && results.length > 0 && viewMode === "grouped" && (
+          <div className="flex flex-col gap-2">
+            {groupedStates.map((state) => {
+              const stateProps = grouped[state];
+              const isOpen = openStates.has(state);
+              return (
+                <div
+                  key={state}
+                  className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleState(state)}
+                    className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  >
+                    <span className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-zinc-50">
+                      <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
+                      {state}
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                        {stateProps.length}
+                      </span>
+                    </span>
+                    {isOpen
+                      ? <ChevronDown className="h-4 w-4 shrink-0 text-zinc-400" />
+                      : <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
+                    }
+                  </button>
+                  {isOpen && (
+                    <div className="divide-y divide-zinc-100 border-t border-zinc-100 dark:divide-zinc-800 dark:border-zinc-800">
+                      {stateProps.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setSelectedProperty(p)}
+                          className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className={`h-2 w-2 shrink-0 rounded-full ${
+                              p.property_analyses?.risk_level === "critical" ? "bg-red-500"
+                              : p.property_analyses?.risk_level === "high"   ? "bg-orange-400"
+                              : p.property_analyses?.risk_level === "medium" ? "bg-amber-400"
+                              : p.property_analyses?.risk_level === "low"    ? "bg-green-400"
+                              : "bg-zinc-300 dark:bg-zinc-600"
+                            }`} />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                                {p.address ?? p.city ?? "–"}
+                                {p.address && p.city ? `, ${p.city}` : ""}{p.zip_code ? ` ${p.zip_code}` : ""}
+                              </p>
+                              <p className="truncate text-xs text-zinc-500">{p.court}</p>
+                            </div>
+                          </div>
+                          <div className="ml-4 shrink-0 text-right">
+                            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                              {p.market_value
+                                ? `${p.market_value.toLocaleString("de-DE")} €`
+                                : "k. A."}
+                            </p>
+                            <p className="text-xs text-zinc-400">
+                              {p.auction_date
+                                ? new Date(p.auction_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" })
+                                : "Termin offen"}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Karten-Ansicht (Grid) ── */}
+        {searched && !loading && results.length > 0 && viewMode === "grid" && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {results.map((property) => (
+              <PropertyCard
+                key={property.id}
+                property={property}
+                onSelect={() => setSelectedProperty(property)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Property-Popup Modal */}
       {selectedProperty && (
         <PropertyModal
           property={selectedProperty}

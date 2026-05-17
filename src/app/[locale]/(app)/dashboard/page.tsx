@@ -3,9 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { RiskBadge } from "@/components/ui/risk-badge";
-import { ChevronRight, Clock, TrendingUp, Zap } from "lucide-react";
-import type { Profile, RiskLevel } from "@/lib/types/database";
+import { Clock, TrendingUp, Zap } from "lucide-react";
+import type { Profile } from "@/lib/types/database";
+import { PropertiesByStateAccordion } from "./_components/properties-by-state-accordion";
 
 export default async function DashboardPage({
   params,
@@ -24,17 +24,20 @@ export default async function DashboardPage({
 
   const supabase = await createClient();
 
-  const [profile, { data: recentProperties }, { data: lastCrawlerRun }] =
+  const [profile, { data: recentProperties }, { data: allProperties }, { data: lastCrawlerRun }] =
     await Promise.all([
       getProfile(user.id),
       supabase
         .from("properties")
-        .select("id, city, zip_code, court, property_type, market_value, auction_date, status, property_analyses(risk_level, summary, analysis_status)")
+        .select("id")
         .eq("status", "active")
-        // eslint-disable-next-line react-hooks/purity
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .order("auction_date", { ascending: true })
-        .limit(6),
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+      supabase
+        .from("properties")
+        .select("id, city, zip_code, state, court, court_file_number, property_type, address, objekt_lage, market_value, minimum_bid, auction_date, status")
+        .eq("status", "active")
+        .order("state", { ascending: true })
+        .order("auction_date", { ascending: true }),
       supabase
         .from("crawler_runs")
         .select("started_at, finished_at, status")
@@ -47,6 +50,14 @@ export default async function DashboardPage({
   const isPro = p?.plan === "pro";
   const searchLimit = 5;
   const searchUsed = Math.min(p?.monthly_search_count ?? 0, searchLimit);
+  const newPropertiesCount = recentProperties?.length ?? 0;
+
+  // Alle aktiven Objekte nach Bundesland gruppieren
+  const propertiesByState: Record<string, typeof allProperties extends (infer T)[] | null ? NonNullable<T>[] : never[]> = {};
+  for (const prop of allProperties ?? []) {
+    const key = prop.state ?? "Unbekannt";
+    (propertiesByState[key] ??= []).push(prop);
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -85,7 +96,7 @@ export default async function DashboardPage({
             <TrendingUp className="h-4 w-4" /> {t("new_properties")}
           </div>
           <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-            {recentProperties?.length ?? 0}
+            {newPropertiesCount}
           </div>
         </div>
 
@@ -129,57 +140,9 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Recent Properties */}
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          {t("new_properties")}
-        </h2>
-        <Link
-          href="/suche"
-          className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400"
-        >
-          {t("view_all")} <ChevronRight className="h-4 w-4" />
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(recentProperties ?? []).map((property) => {
-          const analysis = Array.isArray(property.property_analyses)
-            ? property.property_analyses[0]
-            : property.property_analyses;
-          return (
-          <Link
-            key={property.id}
-            href={{ pathname: "/objekte/[id]", params: { id: property.id } }}
-            className="group rounded-xl border border-zinc-200 bg-white p-5 transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                {property.property_type === "house" ? (locale === "de" ? "Haus" : "House") :
-                 property.property_type === "apartment" ? (locale === "de" ? "Wohnung" : "Apartment") :
-                 property.property_type === "commercial" ? (locale === "de" ? "Gewerbe" : "Commercial") : (locale === "de" ? "Objekt" : "Property")}
-              </span>
-              {analysis?.risk_level && (
-                <RiskBadge level={analysis.risk_level as RiskLevel} />
-              )}
-            </div>
-            <h3 className="mb-1 font-semibold text-zinc-900 dark:text-zinc-50">
-              {property.city}, {property.zip_code}
-            </h3>
-            <p className="mb-3 text-xs text-zinc-500">{property.court}</p>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {property.market_value?.toLocaleString(locale === "de" ? "de-DE" : "en-US")} EUR
-              </span>
-              <span className="text-xs text-zinc-400">
-                {property.auction_date
-                  ? new Date(property.auction_date).toLocaleDateString(locale === "de" ? "de-DE" : "en-US")
-                  : (locale === "de" ? "Termin offen" : "Date open")}
-              </span>
-            </div>
-          </Link>
-          );
-        })}
+      {/* Alle Objekte nach Bundesland */}
+      <div className="mt-8">
+        <PropertiesByStateAccordion propertiesByState={propertiesByState} />
       </div>
 
       {!isPro && (
