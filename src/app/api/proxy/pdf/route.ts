@@ -10,13 +10,21 @@ const ALLOWED_HOSTS = [
   "einsichten-online.de",
 ];
 
-function isAllowedUrl(rawUrl: string): boolean {
+function getAllowedTargetUrl(rawUrl: string): URL | null {
   try {
     const parsed = new URL(rawUrl);
-    if (parsed.protocol !== "https:") return false;
-    return ALLOWED_HOSTS.includes(parsed.hostname);
+
+    if (parsed.protocol !== "https:") return null;
+
+    const normalizedHostname = parsed.hostname.toLowerCase();
+    if (!ALLOWED_HOSTS.includes(normalizedHostname)) return null;
+
+    // Keine Credentials in Ziel-URLs zulassen
+    if (parsed.username || parsed.password) return null;
+
+    return parsed;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -38,14 +46,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Parameter 'url' fehlt" }, { status: 400 });
   }
 
-  let parsedTarget: URL;
-  try {
-    parsedTarget = new URL(targetUrl);
-  } catch {
-    return NextResponse.json({ error: "Ungueltige URL" }, { status: 400 });
-  }
-
-  if (!isAllowedUrl(parsedTarget.toString())) {
+  const safeTargetUrl = getAllowedTargetUrl(targetUrl);
+  if (!safeTargetUrl) {
     return NextResponse.json(
       { error: "URL nicht erlaubt. Nur ZVG-Portal-Dokumente werden unterstuetzt." },
       { status: 403 }
@@ -53,7 +55,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const upstream = await fetch(parsedTarget.toString(), {
+    const upstream = await fetch(safeTargetUrl.toString(), {
       headers: {
         // Browser-User-Agent damit ZVG-Portal nicht blockt
         "User-Agent":
