@@ -63,6 +63,7 @@ export interface PropertyDocument {
   id: string;
   property_id: string;
   original_url: string;
+  storage_path: string | null;
   document_type: DocumentType | null;
   ocr_text: string | null;
   ocr_status: OcrStatus;

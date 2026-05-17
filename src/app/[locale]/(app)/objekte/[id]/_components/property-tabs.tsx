@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Info,
   FileText,
@@ -12,6 +13,8 @@ import {
   PlayCircle,
   RefreshCw,
   BookOpen,
+  CloudDownload,
+  CheckCircle2,
 } from "lucide-react";
 import type { Property, PropertyAnalysis, PropertyDocument } from "@/lib/types/database";
 import { AiDisclaimer } from "@/components/ui/ai-disclaimer";
@@ -49,18 +52,50 @@ const BUNDESLAENDER: Record<string, string> = {
 };
 
 export function PropertyTabs({ property: p, analysis: a, documents, isPro, locale }: PropertyTabsProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [triggering, setTriggering] = useState(false);
   const [triggerMsg, setTriggerMsg] = useState<string | null>(null);
   const [pdfViewer, setPdfViewer] = useState<{ url: string; fileName: string } | null>(null);
+  const [fetchingDocs, setFetchingDocs] = useState(false);
+  const [fetchDocResult, setFetchDocResult] = useState<{ count: number; total: number; errors?: string[] } | null>(null);
 
-  // ZVG-Portal-URL fuer direkten Zugriff auf Dokumente und Termininfos
-  const zvgParts = (p.zvg_id ?? "").split("-");
-  const zvgLand = (zvgParts[0] ?? p.land_abk ?? "").toLowerCase();
-  const zvgNumId = zvgParts[1] ?? "";
+  // ZVG-Portal-URL fuer direkten Zugriff - unterstuetzt beide Formate: "RP-3627" und "RP_3627"
+  const zvgParts = (p.zvg_id ?? "").split(/[-_]/);
+  const zvgLand = (zvgParts.length >= 2 ? zvgParts[0] : (p.land_abk ?? "")).toLowerCase();
+  const zvgNumId = zvgParts.length >= 2 ? (zvgParts[1] ?? "") : "";
   const zvgPortalUrl = zvgNumId && zvgLand
     ? `https://www.zvg-portal.de/index.php?button=showZvg&zvg_id=${zvgNumId}&land_abk=${zvgLand}`
     : "https://www.zvg-portal.de";
+
+  // Supabase Storage - oeffentliche URL fuer gespeicherte Dokumente
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  function getStorageDocUrl(storagePath: string) {
+    return `${supabaseUrl}/storage/v1/object/public/property-docs/${storagePath}`;
+  }
+
+  async function fetchDocuments() {
+    setFetchingDocs(true);
+    setFetchDocResult(null);
+    try {
+      const res = await fetch(`/api/properties/${p.id}/fetch-documents`, { method: "POST" });
+      const data = await res.json() as { count?: number; total?: number; errors?: string[]; error?: string; message?: string };
+      if (!res.ok) {
+        setFetchDocResult({ count: 0, total: 0, errors: [data.error ?? `HTTP ${res.status}`] });
+      } else {
+        setFetchDocResult({ count: data.count ?? 0, total: data.total ?? 0, errors: data.errors });
+        if ((data.count ?? 0) > 0) {
+          // Seite neu laden damit Dokumente sichtbar werden
+          router.refresh();
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setFetchDocResult({ count: 0, total: 0, errors: [msg] });
+    } finally {
+      setFetchingDocs(false);
+    }
+  }
 
   async function triggerAnalysis() {
     setTriggering(true);
@@ -340,54 +375,62 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
           </h3>
           {documents.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {documents.map((doc) => (
-                <div key={doc.id} className="flex items-start gap-3 rounded-xl border border-zinc-100 p-4 dark:border-zinc-800">
-                  <FileText className="mt-0.5 h-5 w-5 shrink-0 text-brand-500" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <span className="font-medium text-sm text-zinc-900 dark:text-zinc-50">
-                        {formatDocType(doc.document_type)}
-                      </span>
-                      {doc.page_count && (
-                        <span className="text-xs text-zinc-400">{doc.page_count} Seiten</span>
+              {documents.map((doc, i) => {
+                // Gespeichertes Dokument: direkte Storage-URL verwenden (kein ZVG-Session-Problem)
+                const viewUrl = doc.storage_path
+                  ? getStorageDocUrl(doc.storage_path)
+                  : doc.original_url;
+                const docName = formatDocType(doc.document_type) + (documents.length > 1 ? ` ${i + 1}` : "");
+                return (
+                  <div key={doc.id} className="flex items-start gap-3 rounded-xl border border-zinc-100 p-4 dark:border-zinc-800">
+                    <FileText className="mt-0.5 h-5 w-5 shrink-0 text-brand-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-medium text-sm text-zinc-900 dark:text-zinc-50">{docName}</span>
+                        {doc.page_count && (
+                          <span className="text-xs text-zinc-400">{doc.page_count} Seiten</span>
+                        )}
+                        {doc.file_size_bytes && (
+                          <span className="text-xs text-zinc-400">{formatBytes(doc.file_size_bytes)}</span>
+                        )}
+                        {doc.ocr_status === "done" && (
+                          <span className="flex items-center gap-0.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <CheckCircle2 className="h-3 w-3" /> Chatbot-bereit
+                          </span>
+                        )}
+                        {doc.storage_path && (
+                          <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                            Gespeichert
+                          </span>
+                        )}
+                      </div>
+                      {doc.ocr_text && (
+                        <p className="text-xs text-zinc-500 line-clamp-3 leading-relaxed dark:text-zinc-400">
+                          {doc.ocr_text.slice(0, 400)}{doc.ocr_text.length > 400 ? "..." : ""}
+                        </p>
                       )}
-                      {doc.file_size_bytes && (
-                        <span className="text-xs text-zinc-400">{formatBytes(doc.file_size_bytes)}</span>
-                      )}
-                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                        doc.ocr_status === "done"
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : doc.ocr_status === "failed"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                            : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                      }`}>
-                        OCR: {doc.ocr_status}
-                      </span>
-                    </div>
-                    {doc.ocr_text && (
-                      <p className="text-xs text-zinc-500 line-clamp-3 leading-relaxed dark:text-zinc-400">
-                        {doc.ocr_text.slice(0, 400)}{doc.ocr_text.length > 400 ? "..." : ""}
-                      </p>
-                    )}
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setPdfViewer({ url: doc.original_url, fileName: formatDocType(doc.document_type) })}
-                        className="flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400"
-                      >
-                        <BookOpen className="h-3 w-3" /> In App lesen
-                      </button>
-                      <a
-                        href={doc.original_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400"
-                      >
-                        <ExternalLink className="h-3 w-3" /> Im ZVG-Portal offnen
-                      </a>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setPdfViewer({ url: viewUrl, fileName: docName })}
+                          className="flex items-center gap-1 rounded-md bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100 dark:bg-brand-900/20 dark:text-brand-400"
+                        >
+                          <BookOpen className="h-3 w-3" /> In App lesen
+                        </button>
+                        {!doc.storage_path && (
+                          <a
+                            href={doc.original_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400"
+                          >
+                            <ExternalLink className="h-3 w-3" /> ZVG-Portal
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : p.document_urls.length > 0 ? (
             <div className="flex flex-col gap-2">
@@ -437,18 +480,57 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               <div>
                 <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Noch keine Dokumente verfugbar</p>
                 <p className="mt-1 max-w-sm text-xs leading-relaxed text-zinc-500">
-                  Gutachten und Beschlusse werden automatisch vom ZVG-Portal eingelesen.<br />
-                  Direkt auf dem ZVG-Portal sind die aktuellen Dokumente sofort einsehbar.
+                  Klicke auf "Dokumente laden" um Gutachten und Beschlusse vom ZVG-Portal
+                  direkt in die App zu laden. Danach kannst du sie lesen und mit dem Chatbot besprechen.
                 </p>
               </div>
-              <a
-                href={zvgPortalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                <ExternalLink className="h-4 w-4" /> Dokumente auf ZVG-Portal offnen
-              </a>
+
+              {/* Ergebnis-Meldung */}
+              {fetchDocResult && (
+                <div className={`w-full max-w-sm rounded-xl p-4 text-sm ${
+                  fetchDocResult.count > 0
+                    ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300"
+                    : "bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+                }`}>
+                  {fetchDocResult.count > 0 ? (
+                    <p className="font-medium">
+                      {fetchDocResult.count} von {fetchDocResult.total} Dokument(e) erfolgreich gespeichert.
+                      {fetchDocResult.count > 0 && " Seite wird aktualisiert..."}
+                    </p>
+                  ) : fetchDocResult.total === 0 ? (
+                    <p>Auf dem ZVG-Portal wurden keine Dokumente gefunden.</p>
+                  ) : (
+                    <p>Dokumente konnten nicht geladen werden.</p>
+                  )}
+                  {fetchDocResult.errors && fetchDocResult.errors.length > 0 && (
+                    <ul className="mt-2 text-xs opacity-70">
+                      {fetchDocResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap justify-center gap-3">
+                <button
+                  onClick={fetchDocuments}
+                  disabled={fetchingDocs}
+                  className="flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-60"
+                >
+                  {fetchingDocs ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Dokumente werden geladen...</>
+                  ) : (
+                    <><CloudDownload className="h-4 w-4" /> Dokumente laden</>
+                  )}
+                </button>
+                <a
+                  href={zvgPortalUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  <ExternalLink className="h-4 w-4" /> ZVG-Portal
+                </a>
+              </div>
             </div>
           )}
         </div>

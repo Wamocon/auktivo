@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scrapeZvgLand, scrapeZvgDetail } from "./scraper";
+import { ensureDocsBucket, downloadPropertyDocuments } from "./documents";
 import { BUNDESLAENDER } from "@/lib/utils/bundeslaender";
 import { getCrawlerProgress, setCrawlerProgress, resetCrawlerProgress, sendControlSignal } from "./state";
 import { sendSearchAlertNotification, sendCrawlerErrorNotification } from "@/lib/email";
@@ -168,8 +169,10 @@ async function enrichWithDetails(
   entries: ZvgEntry[]
 ): Promise<void> {
   console.log(`[Crawler] Starte Detail-Enrichment fuer ${entries.length} Eintraege...`);
-  // Session-Cookie einmalig holen - alle Detail-Requests nutzen dieselbe Session
+  // Session-Cookie einmalig holen - alle Detail-Requests und PDF-Downloads nutzen dieselbe Session
   const sessionCookie = await getZvgSessionCookie();
+  // Storage-Bucket sicherstellen (idempotent - ignoriert "already exists")
+  await ensureDocsBucket(admin);
   const maxMs = calcDetailMaxMs(entries.length);
   const deadline = Date.now() + maxMs;
   const maxMinutes = Math.round(maxMs / 60_000);
@@ -217,14 +220,16 @@ async function enrichWithDetails(
             .update(updateFields)
             .eq("zvg_id", entry.zvg_id);
 
-          // Dokument-URLs als ausstehende OCR-Jobs registrieren
+          // Dokumente herunterladen, KI-lesbar aufbereiten und dauerhaft speichern
           if (detail.document_urls.length > 0) {
             const { data: prop } = await admin
               .from("properties")
               .select("id")
               .eq("zvg_id", entry.zvg_id)
               .single();
+
             if (prop?.id) {
+              // Zuerst Basis-Eintraege anlegen (ignoriert bereits vorhandene - Idempotenz)
               await admin.from("property_documents").upsert(
                 detail.document_urls.map((url) => ({
                   property_id: prop.id,
@@ -233,6 +238,21 @@ async function enrichWithDetails(
                 })),
                 { onConflict: "property_id,original_url", ignoreDuplicates: true }
               );
+
+              // PDFs herunterladen, in Storage speichern und OCR-Text extrahieren
+              const { stored, failed } = await downloadPropertyDocuments(
+                prop.id,
+                detail.document_urls,
+                sessionCookie,
+                admin
+              );
+
+              if (stored > 0) {
+                console.log(
+                  `[Crawler] ${entry.zvg_id}: ${stored} Dokument(e) gespeichert` +
+                  (failed > 0 ? `, ${failed} fehlgeschlagen` : "")
+                );
+              }
             }
           }
         } catch (err) {

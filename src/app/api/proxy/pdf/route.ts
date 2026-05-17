@@ -17,7 +17,12 @@ function getAllowedTargetUrl(rawUrl: string): URL | null {
     if (parsed.protocol !== "https:") return null;
 
     const normalizedHostname = parsed.hostname.toLowerCase();
-    if (!ALLOWED_HOSTS.includes(normalizedHostname)) return null;
+
+    // Supabase Storage URLs erlauben (fuer gespeicherte Dokumente in property-docs Bucket)
+    const isSupabaseStorage = normalizedHostname.endsWith(".supabase.co");
+    const isAllowedHost = ALLOWED_HOSTS.includes(normalizedHostname);
+
+    if (!isAllowedHost && !isSupabaseStorage) return null;
 
     // Keine Credentials in Ziel-URLs zulassen
     if (parsed.username || parsed.password) return null;
@@ -61,6 +66,28 @@ export async function GET(request: Request) {
     );
   }
 
+  // ZVG-Portal benoetigt eine aktive PHP-Session um Dokumente auszuliefern
+  let zvgSessionCookie = "";
+  if (safeTargetUrl.hostname.includes("zvg-portal.de")) {
+    try {
+      const sessionResp = await fetch(
+        "https://www.zvg-portal.de/index.php?button=Termine%20suchen",
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            Accept: "text/html",
+          },
+        }
+      );
+      const rawCookie = sessionResp.headers.get("set-cookie") ?? "";
+      const match = /PHPSESSID=[^;,\s]+/.exec(rawCookie);
+      zvgSessionCookie = match ? match[0] : "";
+    } catch {
+      // Ohne Session trotzdem versuchen
+    }
+  }
+
   try {
     const upstream = await fetch(safeTargetUrl.toString(), {
       headers: {
@@ -69,6 +96,7 @@ export async function GET(request: Request) {
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Accept: "application/pdf,*/*",
         Referer: "https://www.zvg-portal.de/",
+        ...(zvgSessionCookie ? { Cookie: zvgSessionCookie } : {}),
       },
       // Sicherheit: kein Follow von Redirects zu anderen Domains
       redirect: "manual",
