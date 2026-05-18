@@ -32,8 +32,11 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
+/** Internes Auth-Token - konsistent mit run-land.
+ * VERCEL_DEPLOYMENT_ID hat Prioritaet (automatisch von Vercel gesetzt, immer konsistent).
+ * || statt ?? um leere Strings ("") ebenfalls zum Fallback fuehren zu lassen. */
 function resolveAuthToken(): string {
-  return process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
+  return process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
 }
 
 export async function POST(request: Request) {

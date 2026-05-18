@@ -73,9 +73,11 @@ export async function POST() {
     return NextResponse.json({ error: "DB-Fehler" }, { status: 500 });
   }
 
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    // Lauf sofort als fehlgeschlagen markieren und klaren Fehler zurueckgeben
+  // CRON_SECRET mit trim() pruefen - Whitespace-Only gilt als nicht gesetzt.
+  // Fallback auf VERCEL_DEPLOYMENT_ID (automatisch in Vercel verfuegbar).
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (!cronSecret && !process.env.VERCEL_DEPLOYMENT_ID) {
+    // Kein Token verfuegbar - weder CRON_SECRET noch VERCEL_DEPLOYMENT_ID (lokal ohne .env.local)
     await admin
       .from("crawler_runs")
       .update({
@@ -96,9 +98,11 @@ export async function POST() {
   // Ersten Land-Aufruf nach dem Response anstoßen (Bundesland 0 = Bayern / erster Eintrag)
   after(async () => {
     try {
-      // cronSecret frisch aus process.env lesen (nicht aus Closure) um Runtime-Probleme zu vermeiden.
-      // Fallback: VERCEL_DEPLOYMENT_ID (automatisch von Vercel gesetzt, kein manuelles Setup noetig).
-      const authToken = process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
+      // VERCEL_DEPLOYMENT_ID hat Prioritaet: automatisch von Vercel gesetzt,
+      // konsistent fuer alle Funktionen im selben Deployment, kein Whitespace-Problem.
+      // CRON_SECRET als Fallback fuer lokale Entwicklung.
+      // || statt ?? damit leere Strings ("") ebenfalls zum Fallback fuehren.
+      const authToken = process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
       const res = await fetch(`${baseUrl}/api/crawler/run-land?run_id=${runId}&index=0`, {
         method: "POST",
         headers: { Authorization: `Bearer ${authToken}` },

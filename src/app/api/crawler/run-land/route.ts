@@ -25,12 +25,17 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-/** Internes Auth-Token: CRON_SECRET (falls gesetzt) oder VERCEL_DEPLOYMENT_ID als Fallback.
- * VERCEL_DEPLOYMENT_ID wird von Vercel automatisch in jeder Funktion gesetzt - kein
- * manuelles Konfigurieren noetig. So funktioniert die Self-Chain auch wenn CRON_SECRET
- * fehlt oder Whitespace-Probleme hat. */
+/** Internes Auth-Token fuer Self-Chain-Aufrufe.
+ * Prioritaet: VERCEL_DEPLOYMENT_ID > CRON_SECRET
+ *
+ * VERCEL_DEPLOYMENT_ID wird von Vercel automatisch und konsistent fuer ALLE Funktionen
+ * im selben Deployment gesetzt - kein manuelles Setup, kein Whitespace-Problem moeglich.
+ * CRON_SECRET als Fallback fuer lokale Entwicklung (wo VERCEL_DEPLOYMENT_ID nicht existiert).
+ *
+ * WICHTIG: || statt ?? - damit leere Strings ("") ebenfalls zum Fallback fuehren,
+ * nicht nur null/undefined. */
 function resolveAuthToken(): string {
-  return process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
+  return process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
 }
 
 export async function POST(request: Request) {
@@ -39,7 +44,13 @@ export async function POST(request: Request) {
   const providedSecret = (authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader).trim();
 
   if (!validToken || providedSecret !== validToken) {
-    console.error(`[run-land] Auth fehlgeschlagen. Token gesetzt: ${!!validToken}, Laenge: ${validToken.length}`);
+    console.error(
+      `[run-land] 401 Auth-Fehler. ` +
+      `VERCEL_DEPLOYMENT_ID: ${process.env.VERCEL_DEPLOYMENT_ID ? "gesetzt" : "fehlt"}, ` +
+      `CRON_SECRET: ${process.env.CRON_SECRET ? "gesetzt" : "fehlt"}, ` +
+      `Header-Laenge: ${authHeader.length}, ` +
+      `ValidToken-Len: ${validToken.length}, ProvidedToken-Len: ${providedSecret.length}`
+    );
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
