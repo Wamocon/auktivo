@@ -405,20 +405,23 @@ export async function scrapeZvgDetail(
 
     // PDF-Links (amtl. Bekanntmachung, Exposee, Gutachten, Beschluss, etc.)
     for (const a of valueCell.querySelectorAll("a")) {
-      const href = a.getAttribute("href") ?? "";
+      const href = (a.getAttribute("href") ?? "").trim(); // .trim() wegen ZVG trailing-space bug: href="...zvg_id=123 "
       const linkText = normalizeText(a.text).toLowerCase();
       const hrefLower = href.toLowerCase();
 
       const isPdf =
         hrefLower.includes(".pdf") ||
-        // ZVG-Portal-Dokument-Links: button=showDoc oder button=showZvgDoc
-        /button=show(doc|zvgdoc)/i.test(href) ||
+        // ZVG-Portal-Dokument-Links (button=showAnhang ist das tatsaechliche Format!)
+        /button=show(anhang|doc|zvgdoc)/i.test(href) ||
         hrefLower.includes("showdoc") ||
+        hrefLower.includes("showanh") ||
         hrefLower.includes("download") ||
         // Link-Text-Patterns
         /bekanntmachung|expos|gutachten|beschluss|dokument|anlage|verkuendung/.test(linkText);
 
       if (isPdf && href && !href.startsWith("#") && !href.startsWith("mailto:")) {
+        // Nav-PDF 'Zustaendigkeitsliste.pdf' ausschliessen (erscheint auf jeder ZVG-Seite)
+        if (href.toLowerCase().includes("zustaendigkeitsliste")) continue;
         let absoluteUrl: string;
         if (href.startsWith("http")) {
           absoluteUrl = href;
@@ -437,16 +440,20 @@ export async function scrapeZvgDetail(
   // Vollseiten-Fallback: Alle Links der Seite auf PDFs/Dokumente pruefen
   // (ZVG-Portal platziert Dokumentlinks manchmal ausserhalb von Tabellenzellen)
   for (const a of root.querySelectorAll("a[href]")) {
-    const href = a.getAttribute("href") ?? "";
+    const href = (a.getAttribute("href") ?? "").trim();
     if (!href || href.startsWith("#") || href.startsWith("mailto:")) continue;
     const linkText = normalizeText(a.text).toLowerCase();
     const hrefLower = href.toLowerCase();
     const isPdf =
       hrefLower.includes(".pdf") ||
-      /button=show(doc|zvgdoc)/i.test(href) ||
+      // button=showAnhang = tatsaechliches ZVG-Portal-Format fuer Anlagen (Gutachten, Bekanntmachung)
+      /button=show(anhang|doc|zvgdoc)/i.test(href) ||
       hrefLower.includes("showdoc") ||
+      hrefLower.includes("showanh") ||
       (hrefLower.includes("download") && hrefLower.includes("zvg")) ||
       /bekanntmachung|expos|gutachten|beschluss|anlage|verkuendung/.test(linkText);
+    // Nav-PDF 'Zustaendigkeitsliste.pdf' ausschliessen (erscheint auf jeder ZVG-Seite als Navigation)
+    if (isPdf && hrefLower.includes("zustaendigkeitsliste")) continue;
     if (isPdf) {
       const absoluteUrl = href.startsWith("http")
         ? href

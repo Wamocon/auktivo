@@ -1,10 +1,16 @@
 import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { runCrawler } from "@/lib/crawler/runner";
 
-// Vercel Pro: 300s maximales Zeitlimit - Cron-Funktion laeuft bis zum Limit.
-export const maxDuration = 300;
+// Nur CRON_SECRET-Check + DB-Record + ersten Land-Trigger.
+// Eigentliche Arbeit: /api/crawler/run-land (selbst-kettend, 1 Bundesland pro Aufruf).
+export const maxDuration = 30;
+
+function getBaseUrl(): string {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  return "http://localhost:3000";
+}
 
 export async function POST() {
   const headersList = await headers();
@@ -41,32 +47,42 @@ export async function POST() {
       .eq("id", activeRun.id as string);
   }
 
-  // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).
-  // Crawler laeuft listen-only (~250s), danach startet die selbst-kettende
-  // Enrichment-Chain (/api/crawler/enrich) in separaten 300s-Instanzen.
-  // VERCEL_URL bevorzugen: verhindert Cross-Deployment-Trigger (Preview -> Production).
-  const appUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000");
+  // Neuen Lauf in DB anlegen
+  const { data: run, error: runErr } = await admin
+    .from("crawler_runs")
+    .insert({ status: "running", started_at: new Date().toISOString() })
+    .select()
+    .single();
 
+  if (runErr || !run) {
+    console.error("[CRON/Crawler] DB-Fehler:", runErr?.message);
+    return NextResponse.json({ error: "DB-Fehler" }, { status: 500 });
+  }
+
+  const runId = run.id as string;
+  const baseUrl = getBaseUrl();
+
+  // Ersten Land-Aufruf nach dem Response anstoßen
   after(async () => {
     try {
-      await runCrawler({ skipEnrichment: true });
-    } catch (err) {
-      console.error("[API/crawler/trigger] Crawler-Fehler:", err instanceof Error ? err.message : String(err));
-      return;
-    }
-    // Enrichment-Kette anstoßen (jede Instanz ≤300s, selbst-kettend bis remaining=0)
-    try {
-      await fetch(`${appUrl}/api/crawler/enrich`, {
+      const res = await fetch(`${baseUrl}/api/crawler/run-land?run_id=${runId}&index=0`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
+        headers: { Authorization: `Bearer ${cronSecret}` },
       });
-      console.log("[API/crawler/trigger] Enrichment-Kette gestartet.");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      console.log("[CRON/Crawler] Erste Land-Chain gestartet, run_id:", runId);
     } catch (err) {
-      console.error("[API/crawler/trigger] Enrichment-Start fehlgeschlagen:", err instanceof Error ? err.message : String(err));
+      console.error("[CRON/Crawler] Ersten Land-Trigger fehlgeschlagen:", err);
+      await admin
+        .from("crawler_runs")
+        .update({
+          status: "failed",
+          finished_at: new Date().toISOString(),
+          error_message: `Start fehlgeschlagen: ${String(err)}`,
+        })
+        .eq("id", runId);
     }
   });
 
-  return NextResponse.json({ status: "started" });
+  return NextResponse.json({ status: "started", runId });
 }

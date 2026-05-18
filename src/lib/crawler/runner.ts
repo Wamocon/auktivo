@@ -560,3 +560,56 @@ export async function runCrawler(options?: { skipEnrichment?: boolean }): Promis
 
   return result;
 }
+
+/**
+ * Verarbeitet ein einzelnes Bundesland: Scrapen + Upsert in die DB.
+ * Wird von /api/crawler/run-land fuer die selbst-kettende Vercel-Architektur genutzt.
+ * Jeder Aufruf verarbeitet genau ein Bundesland und passt sicher in 60s.
+ *
+ * @returns Statistiken fuer dieses Bundesland
+ */
+export async function runLand(
+  land: (typeof BUNDESLAENDER)[number],
+  admin: ReturnType<typeof createAdminClient>,
+  options?: { skipEnrichment?: boolean }
+): Promise<{ scraped: number; inserted: number; skipped: number; errors: number; newZvgIds: string[] }> {
+  const skipEnrichment = options?.skipEnrichment ?? true;
+  let scraped = 0;
+  let inserted = 0;
+  let skipped = 0;
+  let errors = 0;
+  const newZvgIds: string[] = [];
+
+  try {
+    const entries = await scrapeZvgLand(land);
+    scraped = entries.length;
+    console.log(`[runLand] ${land.short}: ${entries.length} Objekte gefunden`);
+
+    for (let i = 0; i < entries.length; i += UPSERT_BATCH_SIZE) {
+      const batch = entries.slice(i, i + UPSERT_BATCH_SIZE);
+      const result = await upsertBatch(admin, batch);
+      inserted += result.inserted;
+      skipped += result.skipped;
+      await yieldToEventLoop();
+    }
+
+    newZvgIds.push(...entries.map((e) => e.zvg_id));
+
+    if (!skipEnrichment && entries.length > 0) {
+      await enrichWithDetails(admin, entries);
+    }
+
+    // Suchalarm-Benachrichtigungen fuer neue Objekte (fire-and-forget)
+    if (newZvgIds.length > 0) {
+      notifySearchAlerts(admin, newZvgIds).catch((err) =>
+        console.error(`[runLand] Suchalarm-Fehler ${land.short}:`, err)
+      );
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[runLand] Fehler bei ${land.name}:`, message);
+    errors = 1;
+  }
+
+  return { scraped, inserted, skipped, errors, newZvgIds };
+}

@@ -226,6 +226,40 @@ export async function downloadPropertyDocuments(
       continue;
     }
 
+    // Globale Deduplizierung: Gleiches PDF (gleiche file_id) bereits fuer eine andere Property gespeichert?
+    // ZVG-URL-Format: ?button=showAnhang&land_abk=xx&file_id=12345&zvg_id=67890
+    // Gleiche file_id = gleicher Dokument-Inhalt (z.B. Gutachten fuer mehrere Lose einer Auktion)
+    const fileIdMatch = /[?&]file_id=(\d+)/.exec(url);
+    const fileId = fileIdMatch?.[1];
+    if (fileId) {
+      const { data: existingByFileId } = await admin
+        .from("property_documents")
+        .select("storage_path, ocr_text, page_count, file_size_bytes")
+        .ilike("original_url", `%file_id=${fileId}%`)
+        .neq("property_id", propertyId)
+        .not("storage_path", "is", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingByFileId?.storage_path) {
+        // Vorhandenen Storage-Pfad wiederverwenden - kein erneuter Download
+        await admin
+          .from("property_documents")
+          .update({
+            storage_path: existingByFileId.storage_path,
+            ocr_text: existingByFileId.ocr_text ?? null,
+            ocr_status: "done" as const,
+            file_size_bytes: existingByFileId.file_size_bytes ?? null,
+            page_count: existingByFileId.page_count ?? null,
+            processed_at: new Date().toISOString(),
+          })
+          .eq("property_id", propertyId)
+          .eq("original_url", url);
+        stored++;
+        continue;
+      }
+    }
+
     const storagePath = `${propertyId}/doc-${i + 1}.pdf`;
     const result = await downloadAndStorePdf(url, storagePath, sessionCookie, admin);
 
