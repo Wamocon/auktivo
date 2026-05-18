@@ -176,7 +176,7 @@ describe("analyzeProperty", () => {
     );
   });
 
-  it("schneidet langen OCR-Text auf 120000 Zeichen ab", async () => {
+  it("uebergibt den vollstaendigen OCR-Text ohne Kuerzung", async () => {
     const longText = "a".repeat(200_000);
     const mockResult = { risk_level: "low", summary: "", baulasten: [], sanierungsbedarf: [], mietverhaeltnisse: [], grundbuchbelastungen: [], positive_signals: [], disclaimer: "" };
     mockCompletionsCreate.mockResolvedValue({
@@ -187,11 +187,8 @@ describe("analyzeProperty", () => {
     await analyzeProperty(longText, { court: "AG Test" });
 
     const userPrompt = mockCompletionsCreate.mock.calls[0][0].messages[1].content as string;
-    // Der Prompt enthaelt maximal 120000 'a' Zeichen aus dem OCR-Text
-    // plus einige wenige 'a' aus dem Prefix ("Amtsgericht", "unbekannt" etc.)
-    // Daher Grenze: 120000 + kleiner Puffer fuer Prefix-Zeichen
-    const aCount = (userPrompt.match(/a/g) ?? []).length;
-    expect(aCount).toBeLessThanOrEqual(120_100);
+    // Selbstgehostete KI ohne Limit - vollstaendiger Text wird uebergeben
+    expect(userPrompt).toContain(longText);
   });
 });
 
@@ -259,7 +256,7 @@ describe("chatWithProperty", () => {
     expect(collected).toEqual(["Text"]);
   });
 
-  it("sendet maximal 20 Nachrichten als Kontext", async () => {
+  it("sendet maximal 50 Nachrichten als Kontext", async () => {
     mockCompletionsCreate.mockResolvedValue({
       [Symbol.asyncIterator]: async function* () {
         // Kein Output
@@ -267,7 +264,7 @@ describe("chatWithProperty", () => {
     });
 
     const { chatWithProperty } = await import("@/lib/ai/max");
-    const messages = Array.from({ length: 30 }, (_, i) => ({
+    const messages = Array.from({ length: 60 }, (_, i) => ({
       role: "user" as const,
       content: `Frage ${i}`,
     }));
@@ -278,8 +275,8 @@ describe("chatWithProperty", () => {
     for await (const _ of generator) { /* consume */ }
 
     const callArgs = mockCompletionsCreate.mock.calls[0][0];
-    // System-Message + max 20 user messages = max 21 messages total
-    expect(callArgs.messages.length).toBeLessThanOrEqual(21);
+    // System-Message + max 50 user messages = max 51 messages total
+    expect(callArgs.messages.length).toBeLessThanOrEqual(51);
   });
 
   it("sendet korrekte System-Message mit Kontext", async () => {
