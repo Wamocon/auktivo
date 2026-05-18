@@ -73,9 +73,25 @@ export async function POST() {
     return NextResponse.json({ error: "DB-Fehler" }, { status: 500 });
   }
 
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    // Lauf sofort als fehlgeschlagen markieren und klaren Fehler zurueckgeben
+    await admin
+      .from("crawler_runs")
+      .update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: "Konfigurationsfehler: CRON_SECRET ist nicht gesetzt (Vercel-Umgebungsvariable fehlt).",
+      })
+      .eq("id", run.id as string);
+    return NextResponse.json(
+      { error: "CRON_SECRET ist nicht konfiguriert. Bitte in Vercel unter Settings > Environment Variables eintragen." },
+      { status: 500 }
+    );
+  }
+
   const runId = run.id as string;
   const baseUrl = getBaseUrl();
-  const cronSecret = process.env.CRON_SECRET;
 
   // Ersten Land-Aufruf nach dem Response anstoßen (Bundesland 0 = Bayern / erster Eintrag)
   after(async () => {
