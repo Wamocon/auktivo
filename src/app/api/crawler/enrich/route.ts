@@ -22,10 +22,13 @@ export const maxDuration = 300;
 
 const BATCH_SIZE = 30;
 
-/** Bestimmt die Basis-URL fuer den naechsten Selbst-Aufruf. */
+/** Bestimmt die Basis-URL fuer den naechsten Selbst-Aufruf.
+ * VERCEL_URL hat Prioritaet: immer die aktuelle Deployment-URL (Preview ODER Production).
+ * Verhindert, dass ein Preview-Deployment den Produktions-Crawler auslöst.
+ */
 function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
   return "http://localhost:3000";
 }
 
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
     .eq("status", "enriching")
     .order("started_at", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (activeRun) {
     const ageMs = Date.now() - new Date(activeRun.started_at).getTime();
@@ -59,11 +62,17 @@ export async function POST(request: Request) {
     }
   }
 
-  // Lauf als "enriching" markieren
-  await admin.from("crawler_runs").insert({
-    status: "enriching",
-    started_at: new Date().toISOString(),
-  });
+  // Lauf als "enriching" markieren - ID sofort speichern fuer spaeteres Update
+  const { data: newRun } = await admin
+    .from("crawler_runs")
+    .insert({
+      status: "enriching",
+      started_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  const runId = newRun?.id as string | undefined;
 
   after(async () => {
     let remaining = 1; // Startwert > 0 um erste Iteration anzustossen
@@ -85,19 +94,19 @@ export async function POST(request: Request) {
       remaining = 0; // Bei Fehler Kette abbrechen
     }
 
-    // Lauf abschliessen
-    await admin
-      .from("crawler_runs")
-      .update({
-        status: remaining > 0 ? "enriching" : "completed",
-        finished_at: new Date().toISOString(),
-        new_properties_count: batchProcessed,
-        updated_properties_count: 0,
-        error_message: batchFailed > 0 ? `${batchFailed} Fehler` : null,
-      })
-      .eq("status", "enriching")
-      .order("started_at", { ascending: false })
-      .limit(1);
+    // Lauf abschliessen per ID (Supabase PostgREST unterstuetzt ORDER/LIMIT auf UPDATE nicht)
+    if (runId) {
+      await admin
+        .from("crawler_runs")
+        .update({
+          status: remaining > 0 ? "enriching" : "completed",
+          finished_at: new Date().toISOString(),
+          new_properties_count: batchProcessed,
+          updated_properties_count: 0,
+          error_message: batchFailed > 0 ? `${batchFailed} Fehler` : null,
+        })
+        .eq("id", runId);
+    }
 
     // Wenn noch Properties offen: naechsten Batch ausloesen (neue Funktion, frische 300s)
     if (remaining > 0 && batchProcessed > 0) {

@@ -96,7 +96,7 @@ export async function GET() {
     const { data: activeRun } = await admin
       .from("crawler_runs")
       .select("id, started_at, status")
-      .eq("status", "running")
+      .in("status", ["running", "enriching"])
       .gte("started_at", new Date(Date.now() - 10 * 60 * 1_000).toISOString())
       .order("started_at", { ascending: false })
       .limit(1)
@@ -104,6 +104,7 @@ export async function GET() {
 
     if (activeRun) {
       // Crawler laeuft in anderer Instanz - synthetischen "running"-State zurueckgeben
+      const isEnriching = activeRun.status === "enriching";
       return NextResponse.json(
         {
           ...progress,
@@ -111,7 +112,7 @@ export async function GET() {
           runId: activeRun.id as string,
           startedAt: activeRun.started_at as string,
           currentLand: null,
-          currentStep: null,
+          currentStep: isEnriching ? "Detail-Anreicherung" : null,
           _source: "db" as const,
         },
         { headers: { "Cache-Control": "no-store" } }

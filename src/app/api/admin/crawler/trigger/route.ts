@@ -47,8 +47,10 @@ export async function POST() {
   // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).
   // Crawler laeuft listen-only (~250s), danach startet die selbst-kettende
   // Enrichment-Chain (/api/crawler/enrich) in separaten 300s-Instanzen.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  // VERCEL_URL bevorzugen: verhindert Cross-Deployment-Trigger (Preview -> Production).
+  const appUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000");
 
   after(async () => {
     try {
