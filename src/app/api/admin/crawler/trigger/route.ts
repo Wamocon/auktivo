@@ -96,9 +96,12 @@ export async function POST() {
   // Ersten Land-Aufruf nach dem Response anstoßen (Bundesland 0 = Bayern / erster Eintrag)
   after(async () => {
     try {
+      // cronSecret frisch aus process.env lesen (nicht aus Closure) um Runtime-Probleme zu vermeiden.
+      // Fallback: VERCEL_DEPLOYMENT_ID (automatisch von Vercel gesetzt, kein manuelles Setup noetig).
+      const authToken = process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
       const res = await fetch(`${baseUrl}/api/crawler/run-land?run_id=${runId}&index=0`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${cronSecret}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       console.log("[Admin/Crawler] Erste Land-Chain gestartet, run_id:", runId);

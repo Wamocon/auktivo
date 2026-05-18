@@ -15,9 +15,10 @@ function getBaseUrl(): string {
 export async function POST() {
   const headersList = await headers();
   const authorization = headersList.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  const validToken = (process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "");
+  const providedSecret = (authorization ?? "").replace(/^Bearer /, "").trim();
 
-  if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
+  if (!validToken || providedSecret !== validToken) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
@@ -65,9 +66,10 @@ export async function POST() {
   // Ersten Land-Aufruf nach dem Response anstoßen
   after(async () => {
     try {
+      const authToken = process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
       const res = await fetch(`${baseUrl}/api/crawler/run-land?run_id=${runId}&index=0`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${cronSecret}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       console.log("[CRON/Crawler] Erste Land-Chain gestartet, run_id:", runId);

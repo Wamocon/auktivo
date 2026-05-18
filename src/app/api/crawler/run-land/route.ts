@@ -25,13 +25,21 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-export async function POST(request: Request) {
-  // CRON_SECRET-Sicherung
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization") ?? "";
-  const providedSecret = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+/** Internes Auth-Token: CRON_SECRET (falls gesetzt) oder VERCEL_DEPLOYMENT_ID als Fallback.
+ * VERCEL_DEPLOYMENT_ID wird von Vercel automatisch in jeder Funktion gesetzt - kein
+ * manuelles Konfigurieren noetig. So funktioniert die Self-Chain auch wenn CRON_SECRET
+ * fehlt oder Whitespace-Probleme hat. */
+function resolveAuthToken(): string {
+  return process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
+}
 
-  if (!cronSecret || providedSecret !== cronSecret) {
+export async function POST(request: Request) {
+  const validToken = resolveAuthToken();
+  const authHeader = request.headers.get("authorization") ?? "";
+  const providedSecret = (authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader).trim();
+
+  if (!validToken || providedSecret !== validToken) {
+    console.error(`[run-land] Auth fehlgeschlagen. Token gesetzt: ${!!validToken}, Laenge: ${validToken.length}`);
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
@@ -97,7 +105,7 @@ export async function POST(request: Request) {
     .eq("id", runId);
 
   const baseUrl = getBaseUrl();
-  const authBearer = `Bearer ${cronSecret}`;
+  const authBearer = `Bearer ${resolveAuthToken()}`;
 
   if (!isLastLand) {
     // Naechstes Bundesland in separater Vercel-Instanz anstoßen

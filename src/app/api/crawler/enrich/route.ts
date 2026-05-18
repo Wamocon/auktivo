@@ -32,15 +32,16 @@ function getBaseUrl(): string {
   return "http://localhost:3000";
 }
 
-export async function POST(request: Request) {
-  // CRON_SECRET-Sicherung
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization") ?? "";
-  const providedSecret = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader;
+function resolveAuthToken(): string {
+  return process.env.CRON_SECRET?.trim() ?? process.env.VERCEL_DEPLOYMENT_ID ?? "";
+}
 
-  if (!cronSecret || providedSecret !== cronSecret) {
+export async function POST(request: Request) {
+  const validToken = resolveAuthToken();
+  const authHeader = request.headers.get("authorization") ?? "";
+  const providedSecret = (authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader).trim();
+
+  if (!validToken || providedSecret !== validToken) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
         await fetch(`${baseUrl}/api/crawler/enrich`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${process.env.CRON_SECRET}`,
+            Authorization: `Bearer ${resolveAuthToken()}`,
             "Content-Type": "application/json",
           },
         });
