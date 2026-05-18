@@ -17,6 +17,17 @@ const DETAIL_PAUSE_MS = 500;    // Pause zwischen Detail-Batches (500ms, schonen
 const UPSERT_MAX_RETRIES = 3;   // Max. Wiederholungsversuche bei Supabase-Netzwerkfehler
 
 /**
+ * Wenn CRAWLER_SKIP_ENRICHMENT=true gesetzt ist, werden Detail-Seiten und
+ * Dokument-Downloads uebersprungen. Nur die schnelle Listen-Scrape aller 16
+ * Bundeslaender wird ausgefuehrt (~3-4 Min. statt 19+ Min.).
+ *
+ * Vercel Pro: maxDuration=300s - ohne dieses Flag wird die Funktion immer
+ * gekillt bevor updateCrawlerRun() aufgerufen werden kann.
+ * Lokal / Cron mit laengerer Laufzeit: Flag weglassen fuer vollen Lauf.
+ */
+const SKIP_ENRICHMENT = process.env.CRAWLER_SKIP_ENRICHMENT === "true";
+
+/**
  * Berechnet das dynamische Zeitlimit fuer das Detail-Enrichment eines Bundeslandes.
  * Groessere Laender (z.B. NW mit 460 Objekten) bekommen proportional mehr Zeit.
  * Formel: max(5 Min, ceil(entries / 30)) - ca. 2 Sek. pro Objekt bei Concurrency=3
@@ -489,8 +500,8 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       }
 
       // Phase 2: Detail-Enrichment (Dokumente, Grundbuch, Beschreibung, etc.)
-      // Nur starten wenn kein Abort-Signal
-      if (getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
+      // Uebersprungen wenn CRAWLER_SKIP_ENRICHMENT=true (Vercel 300s-Limit)
+      if (!SKIP_ENRICHMENT && getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
         setCrawlerProgress({ currentStep: "enriching" });
         await enrichWithDetails(admin, entries);
       }

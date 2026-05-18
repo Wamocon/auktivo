@@ -10,35 +10,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { parsePdfBuffer, DOCS_BUCKET } from "@/lib/crawler/documents";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
-
-const DOCS_BUCKET = "property-docs";
-
-/** Lazy-geladene pdf-parse Instanz */
-let _pdfParse: ((buffer: Buffer) => Promise<{ text: string; numpages: number }>) | null = null;
-
-function getPdfParse() {
-  if (!_pdfParse) {
-    const g = globalThis as Record<string, unknown>;
-    if (!g["DOMMatrix"]) {
-      g["DOMMatrix"] = class DOMMatrix {
-        a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-        is2D = true; isIdentity = true;
-      };
-    }
-    if (!g["Path2D"]) g["Path2D"] = class Path2D {};
-    if (!g["ImageData"]) {
-      g["ImageData"] = class ImageData {
-        constructor(public data: Uint8ClampedArray, public width: number, public height: number) {}
-      };
-    }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    _pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
-  }
-  return _pdfParse;
-}
 
 export async function POST(request: Request) {
   // Admin-Check
@@ -103,11 +78,10 @@ export async function POST(request: Request) {
 
       const buffer = await resp.arrayBuffer();
 
-      // OCR mit pdf-parse
       let ocrText = "";
       let pageCount = 0;
       try {
-        const parsed = await getPdfParse()(Buffer.from(buffer));
+        const parsed = await parsePdfBuffer(Buffer.from(buffer));
         ocrText = (parsed.text ?? "").trim();
         pageCount = parsed.numpages ?? 0;
       } catch (parseErr) {

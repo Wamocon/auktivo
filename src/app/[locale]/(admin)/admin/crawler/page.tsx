@@ -2,10 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { Database, RefreshCw, CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
+import { Database, RefreshCw, CheckCircle2, XCircle, Loader2, AlertTriangle, Layers } from "lucide-react";
 import { CrawlerProgressPanel } from "./_components/crawler-progress-panel";
 import { MarkFailedButton } from "./_components/mark-failed-button";
 import { OcrRerunButton } from "./_components/ocr-rerun-button";
+import { EnrichButton } from "./_components/enrich-button";
 
 export default async function AdminCrawlerPage({
   params,
@@ -63,7 +64,20 @@ export default async function AdminCrawlerPage({
         </p>
       </div>
 
-      {/* OCR-Verwaltung */}
+      {/* Detail-Anreicherung */}
+      <div className="overflow-hidden rounded-xl border border-violet-200 bg-violet-50/50 p-5 dark:border-violet-900 dark:bg-violet-950/20">
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <Layers className="h-4 w-4 text-violet-600" /> Detail-Anreicherung
+        </h2>
+        <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+          Laedt Detailseiten (Beschreibung, Grundbuch, Glaeubigerinfo) und Dokumente fuer alle
+          noch unangereicherten Objekte. Verarbeitet ~30 Objekte pro Batch, laeuft automatisch
+          durch bis alle Objekte abgearbeitet sind.
+        </p>
+        <EnrichButton />
+      </div>
+
+      {/* OCR-Verarbeitung */}
       <div className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
         <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
           <RefreshCw className="h-4 w-4 text-amber-600" /> OCR-Verarbeitung

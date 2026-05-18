@@ -42,9 +42,23 @@ function getPdfParse() {
   if (!_pdfParse) {
     ensureCanvasPolyfills();
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    _pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string; numpages: number }>;
+    const mod = require("pdf-parse");
+    // pdf-parse ist ein CJS-Modul: manchmal wird es als { default: fn } gebundelt
+    _pdfParse = (typeof mod === "function" ? mod : (mod.default ?? mod)) as (
+      buffer: Buffer
+    ) => Promise<{ text: string; numpages: number }>;
   }
   return _pdfParse;
+}
+
+/**
+ * Extrahiert Text und Seitenzahl aus einem PDF-Buffer.
+ * Kapselt das lazy-loading von pdf-parse fuer Wiederverwendung in API-Routes.
+ */
+export async function parsePdfBuffer(
+  buffer: Buffer
+): Promise<{ text: string; numpages: number }> {
+  return getPdfParse()(buffer);
 }
 
 export interface PdfDownloadResult {
