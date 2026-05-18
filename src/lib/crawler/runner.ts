@@ -371,8 +371,12 @@ async function notifySearchAlerts(
  * 2. Scraped alle 16 Bundeslaender nacheinander (rate-limited)
  * 3. Speichert Objekte via upsert in properties
  * 4. Schliesst den crawler_runs-Eintrag ab
+ *
+ * @param options.skipEnrichment  Wenn true: kein Detail-Enrichment (nur Listen-Scrape).
+ *   Empfohlen fuer Vercel-Trigger - Enrichment laeuft dann via /api/crawler/enrich weiter.
  */
-export async function runCrawler(): Promise<CrawlerRunResult> {
+export async function runCrawler(options?: { skipEnrichment?: boolean }): Promise<CrawlerRunResult> {
+  const skipEnrichment = options?.skipEnrichment ?? SKIP_ENRICHMENT;
   // Bereits laufend? Nicht doppelt starten
   if (getCrawlerProgress().phase === "running") {
     console.warn("[Crawler] Laeuft bereits - ignoriere doppelten Start");
@@ -500,8 +504,8 @@ export async function runCrawler(): Promise<CrawlerRunResult> {
       }
 
       // Phase 2: Detail-Enrichment (Dokumente, Grundbuch, Beschreibung, etc.)
-      // Uebersprungen wenn CRAWLER_SKIP_ENRICHMENT=true (Vercel 300s-Limit)
-      if (!SKIP_ENRICHMENT && getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
+      // Uebersprungen wenn skipEnrichment=true (Vercel 300s-Limit)
+      if (!skipEnrichment && getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
         setCrawlerProgress({ currentStep: "enriching" });
         await enrichWithDetails(admin, entries);
       }

@@ -45,12 +45,28 @@ export async function POST() {
   }
 
   // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).
-  // Ohne after() wuerde der Crawler sofort nach return gekillt.
+  // Crawler laeuft listen-only (~250s), danach startet die selbst-kettende
+  // Enrichment-Chain (/api/crawler/enrich) in separaten 300s-Instanzen.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
   after(async () => {
-    await runCrawler().catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[Admin/Crawler] Crawler-Fehler:", msg);
-    });
+    try {
+      await runCrawler({ skipEnrichment: true });
+    } catch (err) {
+      console.error("[Admin/Crawler] Crawler-Fehler:", err instanceof Error ? err.message : String(err));
+      return;
+    }
+    // Enrichment-Kette anstoßen (jede Instanz ≤300s, selbst-kettend bis remaining=0)
+    try {
+      await fetch(`${appUrl}/api/crawler/enrich`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
+      });
+      console.log("[Admin/Crawler] Enrichment-Kette gestartet.");
+    } catch (err) {
+      console.error("[Admin/Crawler] Enrichment-Start fehlgeschlagen:", err instanceof Error ? err.message : String(err));
+    }
   });
 
   return NextResponse.json({ status: "started" });
