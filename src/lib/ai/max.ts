@@ -11,7 +11,7 @@ function getMaxClient(): OpenAI {
       apiKey: process.env.MAX_API_KEY || "sk-max-litellm-2026",
       // Port 11434 = Ollama direkt. Wenn LiteLLM-Proxy (Port 4000) laeuft, diesen bevorzugen.
       baseURL: process.env.MAX_API_BASE_URL || "http://localhost:11434/v1",
-      timeout: 300_000, // 5 Minuten - MAX laeuft intern, kein Cloud-Timeout
+      timeout: 1_800_000, // 30 Minuten - selbstgehostet, kein Limit
       maxRetries: 2,
     });
   }
@@ -268,7 +268,7 @@ Ort: ${propertyInfo.city ?? "unbekannt"}
 Verkehrswert: ${propertyInfo.market_value ? `${propertyInfo.market_value.toLocaleString("de-DE")} EUR` : "unbekannt"}
 
 GUTACHTEN-TEXT:
-${ocrText.slice(0, 120_000)}`;
+${ocrText}`;
 
   const response = await getMaxClient().chat.completions.create({
     model,
@@ -326,18 +326,17 @@ RISIKOANALYSE-ZUSAMMENFASSUNG:
 ${analysisSummary}
 
 ${contextLabel}:
-${contextText.slice(0, 80_000)}`;
+${contextText}`;
 
   // Chat laeuft immer mit dem schnellen Modell (interaktiv, Latenz wichtig)
   const stream = await getMaxClient().chat.completions.create({
     model: MAX_MODEL_FAST,
     messages: [
       { role: "system", content: systemWithContext },
-      ...messages.slice(-20), // Letzte 20 Nachrichten als Kontext
+      ...messages.slice(-50), // Letzte 50 Nachrichten als Kontext
     ],
     stream: true,
     temperature: 0.3,
-    max_tokens: 1500,
   });
 
   for await (const chunk of stream) {

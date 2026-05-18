@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { canAccess } from "@/lib/feature-gate";
 import { analyzeProperty, analyzePropertyFallback, buildPropertyContextText } from "@/lib/ai/max";
 
+export const maxDuration = 300; // Vercel-Limit; selbstgehostete KI hat kein eigenes Limit
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

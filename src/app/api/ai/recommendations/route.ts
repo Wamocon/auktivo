@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { maxClient, MAX_MODEL } from "@/lib/ai/max";
 import type { Property } from "@/lib/types/database";
 
+export const maxDuration = 300; // Vercel-Limit; selbstgehostete KI hat kein eigenes Limit
+
 const RECOMMENDATION_PROMPT = `Du bist ein erfahrener Immobilieninvestment-Berater, spezialisiert auf deutsche Zwangsversteigerungen.
 
 Der Nutzer hat seine Suchkriterien angegeben. Analysiere die bereitgestellten Objekte und erstelle eine priorisierte Empfehlungsliste.

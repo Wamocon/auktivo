@@ -6,6 +6,7 @@ import type { ChatContextSource } from "@/lib/ai/max";
 import type { ChatMessage } from "@/lib/types/database";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // Vercel-Limit; selbstgehostete KI hat kein eigenes Limit
 
 export async function POST(
   request: Request,
