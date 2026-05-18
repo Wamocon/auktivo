@@ -209,7 +209,7 @@ BEGIN
         id                       uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
         started_at               timestamptz NOT NULL DEFAULT now(),
         finished_at              timestamptz,
-        status                   text        NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','failed')),
+        status                   text        NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','failed','enriching')),
         properties_found         integer     NOT NULL DEFAULT 0,
         new_properties_count     integer     NOT NULL DEFAULT 0,
         updated_properties_count integer     NOT NULL DEFAULT 0,

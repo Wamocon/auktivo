@@ -7,7 +7,7 @@ export type PropertyStatus = "active" | "withdrawn" | "sold";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type OcrStatus = "pending" | "processing" | "done" | "failed";
 export type AnalysisStatus = "pending" | "processing" | "done" | "failed";
-export type CrawlerRunStatus = "running" | "completed" | "failed";
+export type CrawlerRunStatus = "running" | "completed" | "failed" | "enriching";
 export type DocumentType = "gutachten" | "beschluss" | "sonstig";
 
 export interface Profile {
