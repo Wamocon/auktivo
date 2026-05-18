@@ -50,7 +50,7 @@ export async function POST(
   // Objekt aus DB laden
   const { data: property, error: propError } = await admin
     .from("properties")
-    .select("id, zvg_id, land_abk")
+    .select("id, zvg_id, land_abk, document_urls")
     .eq("id", propertyId)
     .single();
 
@@ -75,7 +75,14 @@ export async function POST(
   const sessionCookie = await getZvgSessionCookie();
   const detail = await scrapeZvgDetail(zvgNumId, landAbk, sessionCookie);
 
-  if (detail.document_urls.length === 0) {
+  // Fallback: Wenn ZVG-Portal keine Dokumente liefert (z.B. abgelaufenes Objekt),
+  // gespeicherte document_urls aus der DB verwenden - Downloads koennen trotzdem klappen.
+  const documentUrls: string[] =
+    detail.document_urls.length > 0
+      ? detail.document_urls
+      : ((property.document_urls as string[]) ?? []);
+
+  if (documentUrls.length === 0) {
     return NextResponse.json({
       count: 0,
       total: 0,
@@ -83,16 +90,18 @@ export async function POST(
     });
   }
 
-  // document_urls in properties-Tabelle aktualisieren
-  await admin
-    .from("properties")
-    .update({ document_urls: detail.document_urls, updated_at: new Date().toISOString() })
-    .eq("id", propertyId);
+  // document_urls in properties-Tabelle aktualisieren (nur wenn frische URLs vom ZVG)
+  if (detail.document_urls.length > 0) {
+    await admin
+      .from("properties")
+      .update({ document_urls: documentUrls, updated_at: new Date().toISOString() })
+      .eq("id", propertyId);
+  }
 
   // Storage-Bucket sicherstellen + Basis-Eintraege anlegen
   await ensureDocsBucket(admin);
   await admin.from("property_documents").upsert(
-    detail.document_urls.map((url) => ({
+    documentUrls.map((url) => ({
       property_id: propertyId,
       original_url: url,
       ocr_status: "pending" as const,
@@ -103,14 +112,14 @@ export async function POST(
   // PDFs herunterladen, speichern und OCR-Text extrahieren
   const { stored, failed } = await downloadPropertyDocuments(
     propertyId,
-    detail.document_urls,
+    documentUrls,
     sessionCookie,
     admin
   );
 
   return NextResponse.json({
     count: stored,
-    total: detail.document_urls.length,
+    total: documentUrls.length,
     ...(failed > 0 ? { failed } : {}),
   });
 }

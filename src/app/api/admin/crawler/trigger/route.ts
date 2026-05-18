@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runCrawler } from "@/lib/crawler/runner";
@@ -44,10 +44,13 @@ export async function POST() {
     return NextResponse.json({ status: "already_running", runId: activeRun.id });
   }
 
-  // Start crawler async - do not block response
-  runCrawler().catch((err: unknown) => {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[Admin/Crawler] Crawler error:", msg);
+  // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).
+  // Ohne after() wuerde der Crawler sofort nach return gekillt.
+  after(async () => {
+    await runCrawler().catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Admin/Crawler] Crawler-Fehler:", msg);
+    });
   });
 
   return NextResponse.json({ status: "started" });

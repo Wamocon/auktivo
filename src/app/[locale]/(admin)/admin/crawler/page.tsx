@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Database, RefreshCw, CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
 import { CrawlerProgressPanel } from "./_components/crawler-progress-panel";
 import { MarkFailedButton } from "./_components/mark-failed-button";
+import { OcrRerunButton } from "./_components/ocr-rerun-button";
 
 export default async function AdminCrawlerPage({
   params,
@@ -60,6 +61,17 @@ export default async function AdminCrawlerPage({
           Der Crawler scraped das ZVG-Portal und importiert alle Zwangsversteigerungstermine aus allen 16 Bundesländern.
           Er wird täglich um 06:00 Uhr UTC automatisch gestartet oder kann hier manuell ausgelöst werden.
         </p>
+      </div>
+
+      {/* OCR-Verwaltung */}
+      <div className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50/50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
+        <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <RefreshCw className="h-4 w-4 text-amber-600" /> OCR-Verarbeitung
+        </h2>
+        <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+          Startet OCR fuer alle Dokumente, die bereits in Supabase Storage gespeichert sind aber noch keinen extrahierten Text haben.
+        </p>
+        <OcrRerunButton />
       </div>
 
       {/* Crawler Runs Table */}

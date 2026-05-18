@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
 import { runCrawler } from "@/lib/crawler/runner";
 
@@ -14,11 +14,13 @@ export async function POST() {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
   }
 
-  // Crawler asynchron starten - Response sofort zurueckgeben
-  // damit Vercel Cron nicht in den Timeout laeuft
-  runCrawler().catch((err: unknown) => {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[API/crawler/trigger] Crawler-Fehler:", msg);
+  // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).
+  // Ohne after() wuerde der Crawler sofort nach return gekillt.
+  after(async () => {
+    await runCrawler().catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[API/crawler/trigger] Crawler-Fehler:", msg);
+    });
   });
 
   return NextResponse.json({ status: "started" });
