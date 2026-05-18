@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canAccess } from "@/lib/feature-gate";
-import { analyzeProperty, analyzePropertyFallback } from "@/lib/ai/max";
+import { analyzeProperty, analyzePropertyFallback, buildPropertyContextText } from "@/lib/ai/max";
 
 export async function POST(
   request: Request,
@@ -54,15 +54,9 @@ export async function POST(
 
   const ocrText = documents?.map((d) => d.ocr_text).filter(Boolean).join("\n\n") ?? "";
 
-  if (!ocrText) {
-    return NextResponse.json(
-      {
-        error: "Kein OCR-Text verfuegbar. Bitte lade zuerst die Dokumente im Dokumente-Tab.",
-        code: "no_ocr_text",
-      },
-      { status: 422 }
-    );
-  }
+  // Wenn keine Gutachten-PDFs verfuegbar: ZVG-Portal-Daten aus der DB als Kontext nutzen
+  const contextText = ocrText || buildPropertyContextText(property);
+  const dataSource = ocrText ? "documents" : "zvg_portal";
 
   // Status auf "processing" setzen
   await admin
@@ -73,7 +67,7 @@ export async function POST(
     });
 
   try {
-    const result = await analyzeProperty(ocrText, {
+    const result = await analyzeProperty(contextText, {
       court: property.court,
       market_value: property.market_value,
       city: property.city,
@@ -93,7 +87,7 @@ export async function POST(
           disclaimer: result.disclaimer,
         },
         summary: result.summary,
-        analysis_model: "max-default",
+        analysis_model: dataSource === "zvg_portal" ? "max-zvg-portal" : "max-default",
         prompt_version: "v1.0",
         analysis_status: "done",
         analyzed_at: new Date().toISOString(),
@@ -101,13 +95,13 @@ export async function POST(
       .select()
       .single();
 
-    return NextResponse.json({ analysis });
+    return NextResponse.json({ analysis, dataSource });
   } catch (error) {
     console.error("AI analysis error:", error);
 
     // Algorithmischen Fallback ausfuehren wenn KI nicht erreichbar
     try {
-      const fallbackResult = analyzePropertyFallback(ocrText, {
+      const fallbackResult = analyzePropertyFallback(contextText, {
         court: property.court,
         market_value: property.market_value,
         city: property.city,

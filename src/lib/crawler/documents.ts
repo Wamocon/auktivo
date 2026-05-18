@@ -35,30 +35,49 @@ function ensureCanvasPolyfills() {
   }
 }
 
-/** Lazy-geladene pdf-parse Instanz (erst beim ersten Aufruf initialisiert). */
-let _pdfParse: ((buffer: Buffer) => Promise<{ text: string; numpages: number }>) | null = null;
+/**
+ * pdf-parse v2 verwendet eine Klassen-basierte API:
+ * new PDFParse({ data: buffer }).getText() statt der alten pdfParse(buffer)-Funktion.
+ * Die alten @types/pdf-parse beschreiben v1 - hier direkte Typdefinition.
+ */
+type PdfParseClass = new (opts: { data: Buffer | Uint8Array }) => {
+  getText(opts?: Record<string, unknown>): Promise<{ text: string; total: number }>;
+  destroy(): Promise<void>;
+};
 
-function getPdfParse() {
-  if (!_pdfParse) {
+/** Lazy-geladene PDFParse-Klasse aus pdf-parse v2. */
+let _PDFParseClass: PdfParseClass | null = null;
+
+function getPDFParseClass(): PdfParseClass {
+  if (!_PDFParseClass) {
     ensureCanvasPolyfills();
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("pdf-parse");
-    // pdf-parse ist ein CJS-Modul: manchmal wird es als { default: fn } gebundelt
-    _pdfParse = (typeof mod === "function" ? mod : (mod.default ?? mod)) as (
-      buffer: Buffer
-    ) => Promise<{ text: string; numpages: number }>;
+    const mod = require("pdf-parse") as { PDFParse?: PdfParseClass };
+    if (typeof mod.PDFParse !== "function") {
+      throw new Error(
+        `pdf-parse: PDFParse-Klasse nicht gefunden. Exportierte Keys: ${Object.keys(mod).join(", ")}`
+      );
+    }
+    _PDFParseClass = mod.PDFParse;
   }
-  return _pdfParse;
+  return _PDFParseClass!;
 }
 
 /**
  * Extrahiert Text und Seitenzahl aus einem PDF-Buffer.
- * Kapselt das lazy-loading von pdf-parse fuer Wiederverwendung in API-Routes.
+ * Nutzt pdf-parse v2 Klassen-API: new PDFParse({ data }).getText().
  */
 export async function parsePdfBuffer(
   buffer: Buffer
 ): Promise<{ text: string; numpages: number }> {
-  return getPdfParse()(buffer);
+  const PDFParseClass = getPDFParseClass();
+  const parser = new PDFParseClass({ data: buffer });
+  try {
+    const result = await parser.getText();
+    return { text: result.text ?? "", numpages: result.total ?? 0 };
+  } finally {
+    await parser.destroy().catch(() => {});
+  }
 }
 
 export interface PdfDownloadResult {
@@ -135,7 +154,7 @@ export async function downloadAndStorePdf(
     let ocrText = "";
     let pageCount = 0;
     try {
-      const parsed = await getPdfParse()(Buffer.from(buffer));
+      const parsed = await parsePdfBuffer(Buffer.from(buffer));
       ocrText = (parsed.text ?? "").trim();
       pageCount = parsed.numpages ?? 0;
     } catch {

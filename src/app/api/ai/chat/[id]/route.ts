@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canAccess } from "@/lib/feature-gate";
-import { chatWithProperty } from "@/lib/ai/max";
+import { chatWithProperty, buildPropertyContextText } from "@/lib/ai/max";
+import type { ChatContextSource } from "@/lib/ai/max";
 import type { ChatMessage } from "@/lib/types/database";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +33,18 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // OCR-Text und Analyse laden
-  const [{ data: documents }, { data: analysis }, { data: session }] = await Promise.all([
+  // OCR-Text, Analyse, Chat-Session und Property laden
+  const [{ data: documents }, { data: analysis }, { data: session }, { data: property }] = await Promise.all([
     admin.from("property_documents").select("ocr_text").eq("property_id", propertyId).eq("ocr_status", "done"),
     admin.from("property_analyses").select("summary").eq("property_id", propertyId).single(),
     admin.from("chat_sessions").select("*").eq("user_id", user.id).eq("property_id", propertyId).single(),
+    admin.from("properties").select("*").eq("id", propertyId).single(),
   ]);
 
   const ocrText = documents?.map((d) => d.ocr_text).filter(Boolean).join("\n\n") ?? "";
+  // Wenn keine Gutachten-PDFs: ZVG-Portal-Daten aus DB als Kontext nutzen
+  const contextText = ocrText || (property ? buildPropertyContextText(property) : "");
+  const contextSource: ChatContextSource = ocrText ? "documents" : "zvg_portal";
   const analysisSummary = analysis?.summary ?? "Keine Analyse verfuegbar";
   const existingMessages: ChatMessage[] = (session?.messages as ChatMessage[]) ?? [];
 
@@ -70,8 +75,9 @@ export async function POST(
       try {
         const gen = chatWithProperty(
           updatedMessages.map(({ role, content }) => ({ role, content })),
-          ocrText,
-          analysisSummary
+          contextText,
+          analysisSummary,
+          contextSource
         );
 
         for await (const chunk of gen) {

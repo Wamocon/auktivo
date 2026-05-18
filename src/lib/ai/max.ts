@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { Property } from "@/lib/types/database";
 
 // MAX ist eine selbstgehostete KI mit OpenAI-kompatibler API
 // Lazy initialized - wirft nicht beim Modul-Load
@@ -28,6 +29,76 @@ export const MAX_MODEL_DEEP = process.env.MAX_MODEL_DEEP ?? "qwen3.5:122b";
 export const MAX_MODEL = MAX_MODEL_FAST;
 
 export { getMaxClient as maxClient };
+
+// ----------------------------------------------------------------
+// ZVG-Portal-Kontext (Fallback wenn keine Gutachten-PDFs vorliegen)
+// ----------------------------------------------------------------
+
+/**
+ * Erstellt einen strukturierten Text aus den Property-DB-Feldern,
+ * die vom ZVG-Portal-Crawler befuellt werden.
+ * Wird als Kontext-Fallback genutzt wenn keine OCR-Dokumente vorliegen.
+ */
+export function buildPropertyContextText(property: Property): string {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "unbekannt";
+    try {
+      return new Date(dateStr).toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatEur = (val: number | null | undefined) =>
+    val ? `${val.toLocaleString("de-DE")} EUR` : "nicht angegeben";
+
+  const lines: string[] = [
+    "OBJEKT-INFORMATIONEN (Quelle: ZVG-Portal-Eintrag)",
+    "==================================================",
+    "HINWEIS: Keine Gutachten-PDFs verfuegbar. Analyse basiert auf oeffentlichen ZVG-Portal-Angaben.",
+    "",
+    `Amtsgericht: ${property.court}`,
+  ];
+
+  if (property.court_file_number) lines.push(`Aktenzeichen: ${property.court_file_number}`);
+  lines.push(`Versteigerungstermin: ${formatDate(property.auction_date)}`);
+  lines.push("");
+  lines.push("LAGE UND ADRESSE:");
+  lines.push(
+    [property.address, property.zip_code, property.city, property.state]
+      .filter(Boolean)
+      .join(", ") || "nicht angegeben"
+  );
+  if (property.objekt_lage) lines.push(`Objekt/Lage: ${property.objekt_lage}`);
+
+  lines.push("", "FINANZIELLE ECKDATEN:");
+  lines.push(`Verkehrswert: ${formatEur(property.market_value)}`);
+  lines.push(`Mindestgebot: ${formatEur(property.minimum_bid)}`);
+
+  if (property.art_versteigerung) {
+    lines.push("", "ART DER VERSTEIGERUNG:", property.art_versteigerung);
+  }
+  if (property.grundbuch) {
+    lines.push("", "GRUNDBUCH:", property.grundbuch);
+  }
+  if (property.beschreibung) {
+    lines.push("", "OBJEKTBESCHREIBUNG:", property.beschreibung);
+  }
+  if (property.versteigerungsort) {
+    lines.push("", "VERSTEIGERUNGSORT:", property.versteigerungsort);
+  }
+  if (property.glaeubigerinfo) {
+    lines.push("", "GLAEUBIGERINFORMATION:", property.glaeubigerinfo);
+  }
+
+  return lines.join("\n");
+}
 
 // ----------------------------------------------------------------
 // KI-Risikoanalyse
@@ -218,11 +289,10 @@ ${ocrText.slice(0, 120_000)}`;
 // ----------------------------------------------------------------
 // KI-Chat-Assistent
 // ----------------------------------------------------------------
-const CHAT_SYSTEM_PROMPT = `Du bist ein hilfreicher Assistent fuer Immobilienkaefer bei Zwangsversteigerungen in Deutschland.
+const CHAT_SYSTEM_PROMPT_BASE = `Du bist ein hilfreicher Assistent fuer Immobilienkaefer bei Zwangsversteigerungen in Deutschland.
 
-Dir liegt das vollstaendige Gutachten sowie eine KI-Risikoanalyse vor.
-Beantworte Fragen ausschliesslich auf Basis dieser Informationen.
-Bei Unsicherheit sage klar, dass die Information nicht im Dokument enthalten ist.
+Beantworte Fragen ausschliesslich auf Basis der bereitgestellten Informationen.
+Bei Unsicherheit sage klar, dass die Information nicht verfuegbar ist.
 
 Sprache: Antworte auf Deutsch, klar und verstaendlich fuer Nicht-Experten.
 Ton: Freundlich, sachlich, hilfreich.
@@ -232,18 +302,31 @@ WICHTIG: Fuge am Ende jeder Antwort folgende Zeile hinzu:
 ---
 *Diese Antwort ersetzt keine rechtliche oder bautechnische Fachberatung.*`;
 
+export type ChatContextSource = "documents" | "zvg_portal";
+
 export async function* chatWithProperty(
   messages: Array<{ role: "user" | "assistant"; content: string }>,
-  ocrText: string,
-  analysisSummary: string
+  contextText: string,
+  analysisSummary: string,
+  contextSource: ChatContextSource = "documents"
 ): AsyncGenerator<string> {
-  const systemWithContext = `${CHAT_SYSTEM_PROMPT}
+  const contextLabel =
+    contextSource === "zvg_portal"
+      ? "ZVG-PORTAL-DATEN (keine Gutachten-PDFs verfuegbar)"
+      : "VOLLSTAENDIGER GUTACHTEN-TEXT (Auszug)";
 
-GUTACHTEN-ZUSAMMENFASSUNG DER KI:
+  const sourceNote =
+    contextSource === "zvg_portal"
+      ? "\nHINWEIS: Fuer dieses Objekt liegen keine Gutachten-Dokumente vor. Du arbeitest ausschliesslich mit den oeffentlichen ZVG-Portal-Angaben (Beschreibung, Grundbuch, Verkehrswert etc.). Weise den Nutzer darauf hin, wenn er nach Details fragt, die nur in Gutachten enthaelt waeren."
+      : "\nDir liegt das vollstaendige Gutachten sowie eine KI-Risikoanalyse vor.";
+
+  const systemWithContext = `${CHAT_SYSTEM_PROMPT_BASE}${sourceNote}
+
+RISIKOANALYSE-ZUSAMMENFASSUNG:
 ${analysisSummary}
 
-VOLLSTAENDIGER GUTACHTEN-TEXT (Auszug):
-${ocrText.slice(0, 80_000)}`;
+${contextLabel}:
+${contextText.slice(0, 80_000)}`;
 
   // Chat laeuft immer mit dem schnellen Modell (interaktiv, Latenz wichtig)
   const stream = await getMaxClient().chat.completions.create({

@@ -80,6 +80,7 @@ export async function POST(request: Request) {
 
       let ocrText = "";
       let pageCount = 0;
+      let ocrFailed = false;
       try {
         const parsed = await parsePdfBuffer(Buffer.from(buffer));
         ocrText = (parsed.text ?? "").trim();
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
       } catch (parseErr) {
         const msg = parseErr instanceof Error ? parseErr.message : String(parseErr);
         errors.push(`OCR-Fehler ${storagePath}: ${msg}`);
+        ocrFailed = true;
       }
 
       // DB aktualisieren
@@ -100,7 +102,11 @@ export async function POST(request: Request) {
         })
         .eq("id", doc.id);
 
-      processed++;
+      if (ocrFailed) {
+        failed++;
+      } else {
+        processed++;
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`Fehler bei ${storagePath}: ${msg}`);
