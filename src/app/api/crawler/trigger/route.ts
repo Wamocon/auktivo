@@ -1,5 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { headers } from "next/headers";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { runCrawler } from "@/lib/crawler/runner";
 
 // Vercel Pro: 300s maximales Zeitlimit - Cron-Funktion laeuft bis zum Limit.
@@ -12,6 +13,32 @@ export async function POST() {
 
   if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Nicht autorisiert" }, { status: 401 });
+  }
+
+  // Doppelstart verhindern — haengende Laeufe (>8 Min.) automatisch bereinigen.
+  const admin = createAdminClient();
+  const { data: activeRun } = await admin
+    .from("crawler_runs")
+    .select("id, started_at")
+    .in("status", ["running", "enriching"])
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeRun) {
+    const ageMs = Date.now() - new Date(activeRun.started_at as string).getTime();
+    if (ageMs < 8 * 60 * 1_000) {
+      return NextResponse.json({ status: "already_running", runId: activeRun.id });
+    }
+    console.warn(`[CRON/Crawler] Haengender Lauf ${activeRun.id} automatisch beendet (${Math.round(ageMs / 60_000)} Min. alt)`);
+    await admin
+      .from("crawler_runs")
+      .update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: "Automatisch beendet: Vercel-Funktion getimeouted",
+      })
+      .eq("id", activeRun.id as string);
   }
 
   // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).

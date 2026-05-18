@@ -9,12 +9,13 @@ import type { Property, SearchAlert } from "@/lib/types/database";
 
 export { getCrawlerProgress, resetCrawlerProgress };
 
-const RATE_LIMIT_MS = 2_000;    // 2 Sekunden zwischen Bundeslaender-Requests
-const UPSERT_BATCH_SIZE = 20;   // Eintraege pro Supabase-Batch-Request (20 statt 50 - robuster)
-const BATCH_PAUSE_MS = 800;     // Pause zwischen Batch-Upserts (800ms - schuetzt Supabase)
-const DETAIL_CONCURRENCY = 3;   // Parallele Detail-Page-Requests (3 statt 5, robuster gegen Rate-Limits)
-const DETAIL_PAUSE_MS = 500;    // Pause zwischen Detail-Batches (500ms, schonender fuer ZVG-Portal)
-const UPSERT_MAX_RETRIES = 3;   // Max. Wiederholungsversuche bei Supabase-Netzwerkfehler
+const RATE_LIMIT_MS = 2_000;    // Fuer enrichWithDetails-Kompatibilitaet behalten
+const UPSERT_BATCH_SIZE = 20;
+const BATCH_PAUSE_MS = 800;     // Nur noch in enrichWithDetails genutzt
+const DETAIL_CONCURRENCY = 3;
+const DETAIL_PAUSE_MS = 500;
+const UPSERT_MAX_RETRIES = 3;
+const PARALLEL_LAENDER = 4;    // 4 Bundeslaender gleichzeitig: ~60s statt ~400s sequenziell
 
 /**
  * Wenn CRAWLER_SKIP_ENRICHMENT=true gesetzt ist, werden Detail-Seiten und
@@ -430,8 +431,10 @@ export async function runCrawler(options?: { skipEnrichment?: boolean }): Promis
   let totalSkipped = 0;
   let totalErrors = 0;
 
-  for (const land of BUNDESLAENDER) {
-    // Abort-Signal prüfen
+  // Vercel-kompatibel: PARALLEL_LAENDER (4) Bundeslaender gleichzeitig scrapen.
+  // Zeitersparnis: ~400s sequenziell -> ~70s parallel (passt in Vercels 300s-Limit).
+  for (let gi = 0; gi < BUNDESLAENDER.length; gi += PARALLEL_LAENDER) {
+    // Abort-Signal zwischen Gruppen pruefen
     if (getCrawlerProgress().controlSignal === "abort") {
       console.log("[Crawler] Abbruch-Signal empfangen - beende Lauf");
       sendControlSignal("none");
@@ -440,98 +443,84 @@ export async function runCrawler(options?: { skipEnrichment?: boolean }): Promis
       return { run_id: runId, scraped: totalScraped, inserted: totalInserted, skipped: totalSkipped, errors: totalErrors, duration_ms: Date.now() - startTime };
     }
 
-    // Pause-Signal prüfen - wartet bis Resume oder Abort
-    while (getCrawlerProgress().controlSignal === "pause") {
-      setCrawlerProgress({ phase: "paused" });
-      await sleep(1000);
-      if (getCrawlerProgress().controlSignal === "abort") break;
-    }
-    if (getCrawlerProgress().controlSignal === "abort") {
-      sendControlSignal("none");
-      setCrawlerProgress({ phase: "aborted", finishedAt: new Date().toISOString(), currentLand: null });
-      await admin.from("crawler_runs").update({ status: "failed", finished_at: new Date().toISOString(), error_message: "Manuell abgebrochen" }).eq("id", runId);
-      return { run_id: runId, scraped: totalScraped, inserted: totalInserted, skipped: totalSkipped, errors: totalErrors, duration_ms: Date.now() - startTime };
-    }
-    if (getCrawlerProgress().phase === "paused") {
-      setCrawlerProgress({ phase: "running" });
-    }
+    const group = BUNDESLAENDER.slice(gi, gi + PARALLEL_LAENDER);
+    const groupLabel = group.map((l) => l.short).join("+");
+    console.log(`[Crawler] Gruppe ${Math.floor(gi / PARALLEL_LAENDER) + 1}/${Math.ceil(BUNDESLAENDER.length / PARALLEL_LAENDER)}: ${groupLabel}`);
+    setCrawlerProgress({ currentLand: groupLabel, currentStep: "scraping", currentLandTotal: 0, currentLandEnriched: 0 });
 
-    console.log(`[Crawler] Scrape ${land.name} (${land.short})...`);
-    setCrawlerProgress({
-      currentLand: land.name,
-      currentStep: "scraping",
-      currentLandTotal: 0,
-      currentLandEnriched: 0,
-    });
+    // Alle Bundeslaender der Gruppe gleichzeitig scrapen und speichern
+    const groupResults = await Promise.all(
+      group.map(async (land) => {
+        let landScraped = 0;
+        let landInserted = 0;
+        let landSkipped = 0;
+        let landErrors = 0;
+        const landNewZvgIds: string[] = [];
 
-    try {
-      const entries = await scrapeZvgLand(land);
-      console.log(`[Crawler] ${land.name}: ${entries.length} Objekte gefunden`);
-      totalScraped += entries.length;
+        try {
+          const entries = await scrapeZvgLand(land);
+          landScraped = entries.length;
+          console.log(`[Crawler] ${land.short}: ${entries.length} Objekte gefunden`);
 
-      // Gefundene Anzahl sofort in State schreiben (UI-Feedback)
-      setCrawlerProgress({
-        currentLandTotal: entries.length,
-        currentStep: "saving",
-      });
+          // Batch-Upsert ohne Wartezeit (Vercel: so schnell wie moeglich)
+          for (let i = 0; i < entries.length; i += UPSERT_BATCH_SIZE) {
+            const batch = entries.slice(i, i + UPSERT_BATCH_SIZE);
+            const { inserted, skipped } = await upsertBatch(admin, batch);
+            landInserted += inserted;
+            landSkipped += skipped;
+            await yieldToEventLoop();
+          }
 
-      // Phase 1: Batch-Upsert der Listendaten
-      let processedInLand = 0;
-      for (let i = 0; i < entries.length; i += UPSERT_BATCH_SIZE) {
-        // Abort-Signal auch innerhalb eines grossen Bundeslandes pruefen
-        if (getCrawlerProgress().controlSignal === "abort") {
-          console.log("[Crawler] Abbruch-Signal im Batch-Loop empfangen");
-          break;
+          landNewZvgIds.push(...entries.map((e) => e.zvg_id));
+
+          // Detail-Enrichment nur wenn explizit gewuenscht (skipEnrichment=true auf Vercel)
+          if (!skipEnrichment && entries.length > 0) {
+            await enrichWithDetails(admin, entries);
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`[Crawler] Fehler bei ${land.name}:`, message);
+          landErrors = 1;
+          setCrawlerProgress({ lastError: message, lastErrorLand: land.name });
         }
 
-        const batch = entries.slice(i, i + UPSERT_BATCH_SIZE);
-        const { inserted, skipped } = await upsertBatch(admin, batch);
-        totalInserted += inserted;
-        totalSkipped += skipped;
-        processedInLand += batch.length;
+        return { scraped: landScraped, inserted: landInserted, skipped: landSkipped, errors: landErrors, newZvgIds: landNewZvgIds };
+      })
+    );
 
-        setCrawlerProgress({
-          processedProperties: (totalScraped - entries.length) + processedInLand,
-          insertedProperties: totalInserted,
-          errors: totalErrors,
-        });
-
-        // Event-Loop und Pause: gibt Next.js-Server Zeit fuer andere Requests
-        await yieldToEventLoop();
-        if (i + UPSERT_BATCH_SIZE < entries.length) {
-          await sleep(BATCH_PAUSE_MS);
-        }
-      }
-
-      // Phase 2: Detail-Enrichment (Dokumente, Grundbuch, Beschreibung, etc.)
-      // Uebersprungen wenn skipEnrichment=true (Vercel 300s-Limit)
-      if (!skipEnrichment && getCrawlerProgress().controlSignal !== "abort" && entries.length > 0) {
-        setCrawlerProgress({ currentStep: "enriching" });
-        await enrichWithDetails(admin, entries);
-      }
-
-      // Phase 3: Suchalarm-Benachrichtigungen fuer neue Objekte
-      if (entries.length > 0) {
-        const newZvgIds = entries.map((e) => e.zvg_id);
-        notifySearchAlerts(admin, newZvgIds).catch((err) =>
-          console.error("[Crawler] Suchalarm-Benachrichtigung fehlgeschlagen:", err)
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[Crawler] Fehler bei ${land.name}:`, message);
-      totalErrors++;
-      setCrawlerProgress({ errors: totalErrors, lastError: message, lastErrorLand: land.name });
+    // Ergebnisse der Gruppe zusammenfuehren
+    for (const r of groupResults) {
+      totalScraped += r.scraped;
+      totalInserted += r.inserted;
+      totalSkipped += r.skipped;
+      totalErrors += r.errors;
+      // Suchalarm-Benachrichtigungen asynchron (blockiert nicht den Crawler)
+      notifySearchAlerts(admin, r.newZvgIds).catch((err) =>
+        console.error("[Crawler] Suchalarm-Benachrichtigung fehlgeschlagen:", err)
+      );
     }
 
+    // Zwischenstand sofort in DB speichern (Absicherung falls Vercel-Timeout eintritt)
+    await admin
+      .from("crawler_runs")
+      .update({
+        properties_found: totalScraped,
+        new_properties_count: totalInserted,
+        updated_properties_count: Math.max(0, totalScraped - totalInserted - totalSkipped),
+      })
+      .eq("id", runId);
+
     setCrawlerProgress({
-      processedLaender: BUNDESLAENDER.indexOf(land) + 1,
+      processedLaender: gi + group.length,
+      processedProperties: totalScraped,
+      insertedProperties: totalInserted,
+      errors: totalErrors,
       currentStep: null,
     });
 
-    // Rate limiting - ZVG-Portal nicht ueberlasten
-    if (land !== BUNDESLAENDER[BUNDESLAENDER.length - 1]) {
-      await sleep(RATE_LIMIT_MS);
+    // Kurze Pause zwischen Gruppen (schuetzt ZVG-Portal vor Ueberflutung)
+    if (gi + PARALLEL_LAENDER < BUNDESLAENDER.length) {
+      await sleep(1_000);
     }
   }
 

@@ -30,18 +30,33 @@ export async function POST() {
     }
   }
 
-  // Bereits laufend laut DB? Doppelstart verhindern (cross-instance safe).
+  // Doppelstart verhindern — haengende Laeufe (>8 Min.) automatisch bereinigen.
+  // Vercel killt Funktionen nach maxDuration; ohne Cleanup bleibt der DB-Eintrag ewig auf "running".
   const admin = createAdminClient();
   const { data: activeRun } = await admin
     .from("crawler_runs")
     .select("id, started_at")
-    .eq("status", "running")
+    .in("status", ["running", "enriching"])
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (activeRun) {
-    return NextResponse.json({ status: "already_running", runId: activeRun.id });
+    const ageMs = Date.now() - new Date(activeRun.started_at as string).getTime();
+    if (ageMs < 8 * 60 * 1_000) {
+      // Lauf laeuft noch (juenger als 8 Min.) - kein Doppelstart
+      return NextResponse.json({ status: "already_running", runId: activeRun.id });
+    }
+    // Haengenden Lauf automatisch beenden (Vercel hat die Funktion getimeouted)
+    console.warn(`[Admin/Crawler] Haengender Lauf ${activeRun.id} wird automatisch beendet (${Math.round(ageMs / 60_000)} Min. alt)`);
+    await admin
+      .from("crawler_runs")
+      .update({
+        status: "failed",
+        finished_at: new Date().toISOString(),
+        error_message: "Automatisch beendet: Vercel-Funktion getimeouted",
+      })
+      .eq("id", activeRun.id as string);
   }
 
   // after() haelt die Vercel-Funktion nach dem Response am Leben (waitUntil).
