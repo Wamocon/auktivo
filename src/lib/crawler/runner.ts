@@ -7,7 +7,7 @@ import { sendSearchAlertNotification, sendCrawlerErrorNotification } from "@/lib
 import type { CrawlerRunResult, ZvgEntry } from "./types";
 import type { Property, SearchAlert } from "@/lib/types/database";
 
-export { getCrawlerProgress };
+export { getCrawlerProgress, resetCrawlerProgress };
 
 const RATE_LIMIT_MS = 2_000;    // 2 Sekunden zwischen Bundeslaender-Requests
 const UPSERT_BATCH_SIZE = 20;   // Eintraege pro Supabase-Batch-Request (20 statt 50 - robuster)

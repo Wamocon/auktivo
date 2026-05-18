@@ -10,6 +10,9 @@ export interface CrawlerProgress {
   runId: string | null;
   startedAt: string | null;
   finishedAt: string | null;
+  /** ISO-Timestamp des letzten setCrawlerProgress()-Aufrufs.
+   *  Wird genutzt um veralteten "running"-State zu erkennen (Prozess durch Vercel gekillt). */
+  updatedAt: string | null;
   currentLand: string | null;
   /** Aktueller Schritt innerhalb eines Bundeslandes */
   currentStep: "scraping" | "saving" | "enriching" | null;
@@ -32,6 +35,7 @@ const initial: CrawlerProgress = {
   runId: null,
   startedAt: null,
   finishedAt: null,
+  updatedAt: null,
   currentLand: null,
   currentStep: null,
   currentLandTotal: 0,
@@ -56,7 +60,7 @@ export function getCrawlerProgress(): CrawlerProgress {
 }
 
 export function setCrawlerProgress(patch: Partial<CrawlerProgress>): void {
-  Object.assign(g._crawlerProgress!, patch);
+  Object.assign(g._crawlerProgress!, { ...patch, updatedAt: new Date().toISOString() });
 }
 
 export function resetCrawlerProgress(): void {

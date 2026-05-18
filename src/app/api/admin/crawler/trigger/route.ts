@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runCrawler } from "@/lib/crawler/runner";
 
+// Vercel Pro: 300s maximales Zeitlimit - Crawler-Funktion laeuft bis zum Limit.
+export const maxDuration = 300;
+
 export async function POST() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

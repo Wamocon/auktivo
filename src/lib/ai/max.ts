@@ -7,8 +7,9 @@ let _maxClient: OpenAI | null = null;
 function getMaxClient(): OpenAI {
   if (!_maxClient) {
     _maxClient = new OpenAI({
-      apiKey: process.env.MAX_API_KEY || "max-local-key",
-      baseURL: process.env.MAX_API_BASE_URL || "http://localhost:8080/v1",
+      apiKey: process.env.MAX_API_KEY || "sk-max-litellm-2026",
+      // Port 11434 = Ollama direkt. Wenn LiteLLM-Proxy (Port 4000) laeuft, diesen bevorzugen.
+      baseURL: process.env.MAX_API_BASE_URL || "http://localhost:11434/v1",
       timeout: 300_000, // 5 Minuten - MAX laeuft intern, kein Cloud-Timeout
       maxRetries: 2,
     });
@@ -16,7 +17,15 @@ function getMaxClient(): OpenAI {
   return _maxClient;
 }
 
-export const MAX_MODEL = process.env.MAX_MODEL ?? "max-default";
+// Schnelle Erstanalyse: 35B Allround-Modell - beste Qualitaet der verfuegbaren Modelle
+export const MAX_MODEL_FAST = process.env.MAX_MODEL_FAST ?? "qwen3.6:35b";
+
+// Tiefenanalyse: 122B Flaggschiff-Modell - maximale Praezision fuer komplexe Auswertungen
+// Installation: ollama pull qwen3.5:122b (auf dem MAX-Server ausfuehren)
+export const MAX_MODEL_DEEP = process.env.MAX_MODEL_DEEP ?? "qwen3.5:122b";
+
+/** @deprecated Verwende MAX_MODEL_FAST oder MAX_MODEL_DEEP */
+export const MAX_MODEL = MAX_MODEL_FAST;
 
 export { getMaxClient as maxClient };
 
@@ -178,8 +187,10 @@ export function analyzePropertyFallback(
 
 export async function analyzeProperty(
   ocrText: string,
-  propertyInfo: { court: string; market_value?: number | null; city?: string | null }
+  propertyInfo: { court: string; market_value?: number | null; city?: string | null },
+  mode: "fast" | "deep" = "fast"
 ): Promise<AnalysisResult> {
+  const model = mode === "deep" ? MAX_MODEL_DEEP : MAX_MODEL_FAST;
   const userPrompt = `OBJEKT-KONTEXT:
 Amtsgericht: ${propertyInfo.court}
 Ort: ${propertyInfo.city ?? "unbekannt"}
@@ -189,7 +200,7 @@ GUTACHTEN-TEXT:
 ${ocrText.slice(0, 120_000)}`;
 
   const response = await getMaxClient().chat.completions.create({
-    model: MAX_MODEL,
+    model,
     messages: [
       { role: "system", content: RISK_ANALYSIS_PROMPT },
       { role: "user", content: userPrompt },
@@ -234,8 +245,9 @@ ${analysisSummary}
 VOLLSTAENDIGER GUTACHTEN-TEXT (Auszug):
 ${ocrText.slice(0, 80_000)}`;
 
+  // Chat laeuft immer mit dem schnellen Modell (interaktiv, Latenz wichtig)
   const stream = await getMaxClient().chat.completions.create({
-    model: MAX_MODEL,
+    model: MAX_MODEL_FAST,
     messages: [
       { role: "system", content: systemWithContext },
       ...messages.slice(-20), // Letzte 20 Nachrichten als Kontext

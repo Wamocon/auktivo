@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { runCrawler } from "@/lib/crawler/runner";
 
+// Vercel Pro: 300s maximales Zeitlimit - Cron-Funktion laeuft bis zum Limit.
+export const maxDuration = 300;
+
 export async function POST() {
   const headersList = await headers();
   const authorization = headersList.get("authorization");
