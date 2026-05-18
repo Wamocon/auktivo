@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse, after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { canAccess } from "@/lib/feature-gate";
 import { analyzeProperty, analyzePropertyFallback, buildPropertyContextText } from "@/lib/ai/max";
 
-export const maxDuration = 300; // Vercel-Limit; selbstgehostete KI hat kein eigenes Limit
+export const maxDuration = 300;
 
 export async function POST(
   request: Request,
@@ -25,7 +25,6 @@ export async function POST(
 
   const admin = createAdminClient();
 
-  // Property laden
   const { data: property } = await admin
     .from("properties")
     .select("*")
@@ -36,7 +35,6 @@ export async function POST(
     return NextResponse.json({ error: "Objekt nicht gefunden" }, { status: 404 });
   }
 
-  // Bestehende Analyse pruefen
   const { data: existingAnalysis } = await admin
     .from("property_analyses")
     .select("*")
@@ -47,7 +45,6 @@ export async function POST(
     return NextResponse.json({ analysis: existingAnalysis });
   }
 
-  // OCR-Text laden
   const { data: documents } = await admin
     .from("property_documents")
     .select("ocr_text, ocr_status")
@@ -55,29 +52,25 @@ export async function POST(
     .eq("ocr_status", "done");
 
   const ocrText = documents?.map((d) => d.ocr_text).filter(Boolean).join("\n\n") ?? "";
-
-  // Wenn keine Gutachten-PDFs verfuegbar: ZVG-Portal-Daten aus der DB als Kontext nutzen
   const contextText = ocrText || buildPropertyContextText(property);
   const dataSource = ocrText ? "documents" : "zvg_portal";
 
-  // Status auf "processing" setzen
-  await admin
-    .from("property_analyses")
-    .upsert({
-      property_id: propertyId,
-      analysis_status: "processing",
-    });
+  // Status sofort auf "processing" setzen und Antwort senden
+  await admin.from("property_analyses").upsert({
+    property_id: propertyId,
+    analysis_status: "processing",
+  });
 
-  try {
-    const result = await analyzeProperty(contextText, {
-      court: property.court,
-      market_value: property.market_value,
-      city: property.city,
-    });
+  // Analyse im Hintergrund ausfuehren - laeuft nach dem Response-Versand weiter
+  after(async () => {
+    try {
+      const result = await analyzeProperty(contextText, {
+        court: property.court,
+        market_value: property.market_value,
+        city: property.city,
+      });
 
-    const { data: analysis } = await admin
-      .from("property_analyses")
-      .upsert({
+      await admin.from("property_analyses").upsert({
         property_id: propertyId,
         risk_level: result.risk_level,
         risk_signals: {
@@ -93,25 +86,17 @@ export async function POST(
         prompt_version: "v1.0",
         analysis_status: "done",
         analyzed_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    return NextResponse.json({ analysis, dataSource });
-  } catch (error) {
-    console.error("AI analysis error:", error);
-
-    // Algorithmischen Fallback ausfuehren wenn KI nicht erreichbar
-    try {
-      const fallbackResult = analyzePropertyFallback(contextText, {
-        court: property.court,
-        market_value: property.market_value,
-        city: property.city,
       });
+    } catch (aiError) {
+      console.error("[Analyse] KI-Fehler, starte algorithmischen Fallback:", aiError);
+      try {
+        const fallbackResult = analyzePropertyFallback(contextText, {
+          court: property.court,
+          market_value: property.market_value,
+          city: property.city,
+        });
 
-      const { data: fallbackAnalysis } = await admin
-        .from("property_analyses")
-        .upsert({
+        await admin.from("property_analyses").upsert({
           property_id: propertyId,
           risk_level: fallbackResult.risk_level,
           risk_signals: {
@@ -127,22 +112,19 @@ export async function POST(
           prompt_version: "v1.0-fallback",
           analysis_status: "done",
           analyzed_at: new Date().toISOString(),
-          error_message: `KI nicht erreichbar: ${String(error)}`,
-        })
-        .select()
-        .single();
-
-      return NextResponse.json({ analysis: fallbackAnalysis, fallback: true });
-    } catch (fallbackError) {
-      console.error("Fallback analysis error:", fallbackError);
-      await admin
-        .from("property_analyses")
-        .upsert({
+          error_message: `KI nicht erreichbar: ${String(aiError)}`,
+        });
+      } catch (fallbackError) {
+        console.error("[Analyse] Fallback-Fehler:", fallbackError);
+        await admin.from("property_analyses").upsert({
           property_id: propertyId,
           analysis_status: "failed",
-          error_message: String(error),
+          error_message: String(aiError),
         });
-      return NextResponse.json({ error: "KI-Analyse fehlgeschlagen" }, { status: 500 });
+      }
     }
-  }
+  });
+
+  // Sofortige Antwort - Frontend pollt via router.refresh()
+  return NextResponse.json({ status: "processing" });
 }

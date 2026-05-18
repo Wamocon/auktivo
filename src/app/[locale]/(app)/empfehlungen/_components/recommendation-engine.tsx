@@ -31,14 +31,14 @@ const PROPERTY_TYPE_OPTIONS = [
   { value: "house", label: "Haus" },
   { value: "apartment", label: "Wohnung" },
   { value: "commercial", label: "Gewerbe" },
-  { value: "land", label: "Grundstuck" },
+  { value: "land", label: "Grundstück" },
   { value: "other", label: "Sonstiges" },
 ];
 
 const RISK_OPTIONS = [
   { value: "low", label: "Niedrig - nur sichere Objekte" },
   { value: "medium", label: "Mittel - kalkulierbares Risiko" },
-  { value: "high", label: "Hoch - auch komplexe Falle" },
+  { value: "high", label: "Hoch - auch komplexe Fälle" },
 ];
 
 function formatCurrency(n: number | null | undefined): string {
@@ -56,7 +56,7 @@ function formatPropertyType(t: string | null | undefined): string {
     case "house": return "Haus";
     case "apartment": return "Wohnung";
     case "commercial": return "Gewerbeimmobilie";
-    case "land": return "Grundstuck";
+    case "land": return "Grundstück";
     default: return "Objekt";
   }
 }
@@ -103,9 +103,9 @@ function PropertyDetailModal({
     : null;
 
   const tabs: { id: ModalTab; label: string; icon: React.ReactNode }[] = [
-    { id: "uebersicht", label: "Ubersicht", icon: <Info className="h-4 w-4" /> },
+    { id: "uebersicht", label: "Übersicht", icon: <Info className="h-4 w-4" /> },
     { id: "beschreibung", label: "Beschreibung", icon: <FileText className="h-4 w-4" /> },
-    { id: "begruendung", label: "KI-Begruendung", icon: <BrainCircuit className="h-4 w-4" /> },
+    { id: "begruendung", label: "KI-Begründung", icon: <BrainCircuit className="h-4 w-4" /> },
   ];
 
   return (
@@ -217,13 +217,13 @@ function PropertyDetailModal({
               )}
               {p.glaeubigerinfo && (
                 <div>
-                  <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">Glaeubiger</h4>
+                  <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">Gläubiger</h4>
                   <p className="text-zinc-700 dark:text-zinc-300">{p.glaeubigerinfo}</p>
                 </div>
               )}
               {!p.beschreibung && !p.art_versteigerung && !p.grundbuch && (
                 <p className="text-zinc-400 italic">
-                  Keine weiteren Beschreibungsdaten verfuegbar. Details im ZVG-Portal abrufen.
+                  Keine weiteren Beschreibungsdaten verfügbar. Details im ZVG-Portal abrufen.
                 </p>
               )}
             </div>
@@ -233,7 +233,7 @@ function PropertyDetailModal({
           {activeTab === "begruendung" && (
             <div className="space-y-4">
               <div className="rounded-xl bg-zinc-50 p-4 text-sm leading-relaxed text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">KI-Begruendung</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">KI-Begründung</p>
                 {rec.reasoning}
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -269,7 +269,7 @@ function PropertyDetailModal({
                 )}
               </div>
               <p className="rounded-xl bg-zinc-50 px-3 py-2 text-xs text-zinc-400 dark:bg-zinc-800">
-                KI-Empfehlungen sind Orientierungshilfen - keine Anlageberatung. WAMOCON GmbH ubernimmt keine Haftung.
+                KI-Empfehlungen sind Orientierungshilfen - keine Anlageberatung. WAMOCON GmbH übernimmt keine Haftung.
               </p>
             </div>
           )}
@@ -299,7 +299,7 @@ function PropertyDetailModal({
             onClick={onClose}
             className="rounded-full border border-zinc-300 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
           >
-            Schliessen
+            Schließen
           </button>
         </div>
       </div>
@@ -514,7 +514,7 @@ export function RecommendationEngine({ locale }: RecommendationEngineProps) {
                 onChange={(e) => setPrefs((p) => ({ ...p, bundesland: e.target.value || undefined }))}
                 className="w-full rounded-xl border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-900"
               >
-                <option value="">Alle Bundeslaender</option>
+                <option value="">Alle Bundesländer</option>
                 {BUNDESLAENDER.map((bl) => (
                   <option key={bl.short} value={bl.short}>{bl.name}</option>
                 ))}
@@ -528,7 +528,7 @@ export function RecommendationEngine({ locale }: RecommendationEngineProps) {
               </label>
               <input
                 type="text"
-                placeholder="z.B. Munchen oder 80331"
+                placeholder="z.B. München oder 80331"
                 value={prefs.location ?? ""}
                 onChange={(e) => setPrefs((p) => ({ ...p, location: e.target.value || undefined }))}
                 className="w-full rounded-xl border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-zinc-700"
@@ -564,7 +564,7 @@ export function RecommendationEngine({ locale }: RecommendationEngineProps) {
             {/* Mindestgroesse */}
             <div className="mb-4">
               <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Mindestgroesse (mÂ²)
+                Mindestgröße (m²)
               </label>
               <input
                 type="number"
@@ -604,7 +604,7 @@ export function RecommendationEngine({ locale }: RecommendationEngineProps) {
               </label>
               <textarea
                 rows={3}
-                placeholder="z.B. Garten gewunscht, kein Sanierungsstau, barrierefrei..."
+                placeholder="z.B. Garten gewünscht, kein Sanierungsstau, barrierefrei..."
                 value={prefs.other_criteria ?? ""}
                 onChange={(e) => setPrefs((p) => ({ ...p, other_criteria: e.target.value || undefined }))}
                 className="w-full resize-none rounded-xl border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-brand-500 dark:border-zinc-700"
@@ -642,7 +642,7 @@ export function RecommendationEngine({ locale }: RecommendationEngineProps) {
             <div className="flex min-h-50 items-center justify-center rounded-2xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="text-center">
                 <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-brand-500" />
-                <p className="text-sm text-zinc-500">KI analysiert verfugbare Objekte...</p>
+                <p className="text-sm text-zinc-500">KI analysiert verfügbare Objekte...</p>
                 <p className="mt-1 text-xs text-zinc-400">Das kann bis zu 30 Sekunden dauern</p>
               </div>
             </div>
@@ -684,7 +684,7 @@ export function RecommendationEngine({ locale }: RecommendationEngineProps) {
                 />
               ))}
               <p className="rounded-xl bg-zinc-50 px-4 py-3 text-xs text-zinc-400 dark:bg-zinc-800">
-                KI-Empfehlungen sind Orientierungshilfen und ersetzen keine rechtliche, steuerliche oder bautechnische Fachberatung. WAMOCON GmbH ubernimmt keine Haftung.
+                KI-Empfehlungen sind Orientierungshilfen und ersetzen keine rechtliche, steuerliche oder bautechnische Fachberatung. WAMOCON GmbH übernimmt keine Haftung.
               </p>
             </div>
           )}

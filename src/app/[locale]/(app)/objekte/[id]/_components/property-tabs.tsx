@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Info,
@@ -33,7 +33,7 @@ interface PropertyTabsProps {
 }
 
 const BUNDESLAENDER: Record<string, string> = {
-  bw: "Baden-Wurttemberg",
+  bw: "Baden-Württemberg",
   by: "Bayern",
   be: "Berlin",
   bb: "Brandenburg",
@@ -48,7 +48,7 @@ const BUNDESLAENDER: Record<string, string> = {
   sn: "Sachsen",
   st: "Sachsen-Anhalt",
   sh: "Schleswig-Holstein",
-  th: "Thuringen",
+  th: "Thüringen",
 };
 
 export function PropertyTabs({ property: p, analysis: a, documents, isPro, locale }: PropertyTabsProps) {
@@ -59,6 +59,13 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
   const [pdfViewer, setPdfViewer] = useState<{ url: string; fileName: string } | null>(null);
   const [fetchingDocs, setFetchingDocs] = useState(false);
   const [fetchDocResult, setFetchDocResult] = useState<{ count: number; total: number; errors?: string[] } | null>(null);
+
+  // Auto-Polling: alle 10 Sekunden aktualisieren solange Analyse läuft
+  useEffect(() => {
+    if (a?.analysis_status !== "processing") return;
+    const id = setInterval(() => router.refresh(), 10_000);
+    return () => clearInterval(id);
+  }, [a?.analysis_status, router]);
 
   // ZVG-Portal-URL fuer direkten Zugriff - unterstuetzt beide Formate: "RP-3627" und "RP_3627"
   const zvgParts = (p.zvg_id ?? "").split(/[-_]/);
@@ -123,7 +130,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: "overview", label: "Ubersicht", icon: <Info className="h-4 w-4" /> },
+    { id: "overview", label: "Übersicht", icon: <Info className="h-4 w-4" /> },
     { id: "description", label: "Beschreibung", icon: <MapPin className="h-4 w-4" /> },
     { id: "location", label: "Umgebung", icon: <MapPin className="h-4 w-4" /> },
     {
@@ -328,7 +335,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
             !p.beschreibung && (
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
                 <p className="text-sm text-zinc-500">
-                  Keine erweiterte Beschreibung verfugbar. Die vollstandigen Angaben finden Sie auf dem ZVG-Portal.
+                  Keine erweiterte Beschreibung verfügbar. Die vollständigen Angaben finden Sie auf dem ZVG-Portal.
                 </p>
               </div>
             )
@@ -487,7 +494,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                 <FileText className="h-6 w-6 text-zinc-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Noch keine Dokumente verfugbar</p>
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Noch keine Dokumente verfügbar</p>
                 <p className="mt-1 max-w-sm text-xs leading-relaxed text-zinc-500">
                   Klicke auf &ldquo;Dokumente laden&rdquo; um Gutachten und Beschlusse vom ZVG-Portal
                   direkt in die App zu laden. Danach kannst du sie lesen und mit dem Chatbot besprechen.
@@ -574,7 +581,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                   Noch keine KI-Analyse vorhanden
                 </p>
                 <p className="max-w-sm text-sm text-zinc-500">
-                  Starte die Analyse manuell. Die KI wertet verfugbare Dokumente und Objektdaten aus.
+                  Starte die Analyse manuell. Die KI wertet verfügbare Dokumente und Objektdaten aus.
                 </p>
                 {triggerMsg ? (
                   <p className="max-w-sm rounded-xl bg-zinc-100 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -625,7 +632,7 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
               <div className="flex flex-col items-center gap-4 py-8 text-center">
                 <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
                 <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                  Analyse wird durchgefuehrt...
+                  Analyse wird durchgeführt...
                 </p>
                 <p className="max-w-sm text-sm text-zinc-500">
                   Die KI analysiert gerade die Objektdaten. Einen Moment bitte.
@@ -661,9 +668,9 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
                         KI nicht erreichbar - Algorithmische Auswertung
                       </p>
                       <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                        Der KI-Dienst war zum Analysezeitpunkt nicht verfuegbar. Diese Auswertung basiert auf
+                        Der KI-Dienst war zum Analysezeitpunkt nicht verfügbar. Diese Auswertung basiert auf
                         einer Schlagwortsuche im OCR-Text und ist weniger praezise als eine vollstaendige KI-Analyse.
-                        Bitte starten Sie die Analyse erneut, sobald der Dienst verfuegbar ist.
+                        Bitte starten Sie die Analyse erneut, sobald der Dienst verfügbar ist.
                       </p>
                     </div>
                   </div>
