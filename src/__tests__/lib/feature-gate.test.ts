@@ -123,6 +123,15 @@ describe("canAccess", () => {
       expect(await canAccess("user-pro", feature)).toBe(true);
     }
   });
+
+  it("gibt true zurueck fuer nicht-Pro-Feature (Runtime-Guard)", async () => {
+    // PRO_FEATURES enthaelt alle Feature-Typ-Werte - dieser Branch ist per Typ
+    // nicht erreichbar, aber der Runtime-Guard muss trotzdem abgedeckt sein.
+    // Typcast notwendig um den Fall zu testen.
+    const unknownFeature = "search" as unknown as import("@/lib/feature-gate").Feature;
+    mockSupabase({ plan: "free" });
+    expect(await canAccess("user-free", unknownFeature)).toBe(true);
+  });
 });
 
 describe("checkSearchLimit", () => {
@@ -142,11 +151,12 @@ describe("checkSearchLimit", () => {
     expect(result).toEqual({ allowed: false, remaining: 0 });
   });
 
-  it("gibt allowed=false und remaining=0 bei RPC-Fehler zurueck", async () => {
+  it("gibt allowed=true (fail-open) und remaining=0 bei RPC-Fehler zurueck", async () => {
     mockSupabase({ rpcError: true });
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = await checkSearchLimit("user-123");
-    expect(result).toEqual({ allowed: false, remaining: 0 });
+    // Bei DB-Fehler: fail-open (besser UX als False-Negative)
+    expect(result).toEqual({ allowed: true, remaining: 0 });
     consoleSpy.mockRestore();
   });
 

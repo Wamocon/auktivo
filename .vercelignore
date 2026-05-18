@@ -1,0 +1,24 @@
+# Test- und CI-Artefakte
+coverage/
+.nyc_output/
+
+# Dokumentation
+docs/
+anforderungen/
+
+# Entwicklungsskripte (nicht benoetigt im Deployment)
+scripts/
+hooks/
+
+# Supabase-Migrationsdateien (werden nur lokal/per CLI ausgefuehrt)
+supabase/
+
+# Testdateien
+src/__tests__/
+vitest.config.ts
+axe-linter.json
+
+# Log-Dateien
+*.log
+dev_err.txt
+dev_out.txt

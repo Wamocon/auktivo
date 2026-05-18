@@ -1,12 +1,13 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Plan = "free" | "pro";
+export type UserType = "private" | "business";
 export type PropertyType = "house" | "apartment" | "commercial" | "land" | "other";
 export type PropertyStatus = "active" | "withdrawn" | "sold";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type OcrStatus = "pending" | "processing" | "done" | "failed";
 export type AnalysisStatus = "pending" | "processing" | "done" | "failed";
-export type CrawlerRunStatus = "running" | "completed" | "failed";
+export type CrawlerRunStatus = "running" | "completed" | "failed" | "enriching";
 export type DocumentType = "gutachten" | "beschluss" | "sonstig";
 
 export interface Profile {
@@ -14,7 +15,11 @@ export interface Profile {
   email: string;
   full_name: string | null;
   plan: Plan;
+  user_type: UserType;
   is_admin: boolean;
+  phone: string | null;
+  company_name: string | null;
+  email_notifications: boolean;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   subscription_status: string | null;
@@ -35,11 +40,19 @@ export interface Property {
   city: string | null;
   zip_code: string;
   state: string | null;
+  land_abk: string | null;
+  objekt_lage: string | null;
   lat: number | null;
   lng: number | null;
   market_value: number | null;
   minimum_bid: number | null;
   document_urls: string[];
+  art_versteigerung: string | null;
+  grundbuch: string | null;
+  beschreibung: string | null;
+  versteigerungsort: string | null;
+  glaeubigerinfo: string | null;
+  geoserver_url: string | null;
   status: PropertyStatus;
   last_crawled_at: string | null;
   created_at: string;
@@ -50,6 +63,7 @@ export interface PropertyDocument {
   id: string;
   property_id: string;
   original_url: string;
+  storage_path: string | null;
   document_type: DocumentType | null;
   ocr_text: string | null;
   ocr_status: OcrStatus;

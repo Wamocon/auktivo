@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { Property } from "@/lib/types/database";
 
 // vi.hoisted() stellt sicher dass Mocks vor dem Hoisting von vi.mock verfuegbar sind
 const mockCompletionsCreate = vi.hoisted(() => vi.fn());
@@ -10,24 +11,60 @@ const OpenAIMock = vi.hoisted(() =>
 
 vi.mock("openai", () => ({ default: OpenAIMock }));
 
-describe("MAX_MODEL", () => {
+describe("getMaxClient Singleton", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  it("erstellt OpenAI-Client nur einmal (Singleton-Cache greift beim zweiten Aufruf)", async () => {
+    // Beide analyzeProperty-Aufrufe teilen sich denselben _maxClient
+    const mockResult = {
+      risk_level: "low" as const,
+      summary: "",
+      baulasten: [],
+      sanierungsbedarf: [],
+      mietverhaeltnisse: [],
+      grundbuchbelastungen: [],
+      positive_signals: [],
+      disclaimer: "",
+    };
+    mockCompletionsCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(mockResult) } }],
+    });
+
+    // Gleiche Modul-Instanz ohne resetModules dazwischen
+    const { analyzeProperty } = await import("@/lib/ai/max");
+
+    await analyzeProperty("Text1", { court: "AG Test" });
+    await analyzeProperty("Text2", { court: "AG Test" });
+
+    // OpenAI-Konstruktor nur EINMAL aufgerufen - Singleton-Cache hat gegriffen
+    expect(OpenAIMock).toHaveBeenCalledTimes(1);
+    // completions.create aber zweimal - beide Analysen wurden ausgeführt
+    expect(mockCompletionsCreate).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("MAX_MODEL_FAST / MAX_MODEL_DEEP", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
   });
 
-  it("verwendet Standard-Modell wenn MAX_MODEL nicht gesetzt", async () => {
-    vi.stubEnv("MAX_MODEL", "");
-    const { MAX_MODEL } = await import("@/lib/ai/max");
-    // Da MAX_MODEL beim Modul-Load ausgewertet wird, pruefen wir den Fallback
-    expect(typeof MAX_MODEL).toBe("string");
+  it("verwendet Standard-Modell wenn MAX_MODEL_FAST nicht gesetzt", async () => {
+    vi.stubEnv("MAX_MODEL_FAST", "");
+    const { MAX_MODEL_FAST } = await import("@/lib/ai/max");
+    // Fallback auf den eingebetteten Default-Wert
+    expect(typeof MAX_MODEL_FAST).toBe("string");
   });
 
   it("verwendet gesetztes MAX_MODEL aus Umgebungsvariable", async () => {
     vi.resetModules();
-    vi.stubEnv("MAX_MODEL", "my-custom-model");
-    const { MAX_MODEL } = await import("@/lib/ai/max");
-    expect(MAX_MODEL).toBe("my-custom-model");
+    vi.stubEnv("MAX_MODEL_FAST", "my-custom-model");
+    const { MAX_MODEL_FAST } = await import("@/lib/ai/max");
+    expect(MAX_MODEL_FAST).toBe("my-custom-model");
   });
 });
 
@@ -139,7 +176,7 @@ describe("analyzeProperty", () => {
     );
   });
 
-  it("schneidet langen OCR-Text auf 120000 Zeichen ab", async () => {
+  it("uebergibt den vollstaendigen OCR-Text ohne Kuerzung", async () => {
     const longText = "a".repeat(200_000);
     const mockResult = { risk_level: "low", summary: "", baulasten: [], sanierungsbedarf: [], mietverhaeltnisse: [], grundbuchbelastungen: [], positive_signals: [], disclaimer: "" };
     mockCompletionsCreate.mockResolvedValue({
@@ -150,11 +187,8 @@ describe("analyzeProperty", () => {
     await analyzeProperty(longText, { court: "AG Test" });
 
     const userPrompt = mockCompletionsCreate.mock.calls[0][0].messages[1].content as string;
-    // Der Prompt enthaelt maximal 120000 'a' Zeichen aus dem OCR-Text
-    // plus einige wenige 'a' aus dem Prefix ("Amtsgericht", "unbekannt" etc.)
-    // Daher Grenze: 120000 + kleiner Puffer fuer Prefix-Zeichen
-    const aCount = (userPrompt.match(/a/g) ?? []).length;
-    expect(aCount).toBeLessThanOrEqual(120_100);
+    // Selbstgehostete KI ohne Limit - vollstaendiger Text wird uebergeben
+    expect(userPrompt).toContain(longText);
   });
 });
 
@@ -222,7 +256,7 @@ describe("chatWithProperty", () => {
     expect(collected).toEqual(["Text"]);
   });
 
-  it("sendet maximal 20 Nachrichten als Kontext", async () => {
+  it("sendet maximal 50 Nachrichten als Kontext", async () => {
     mockCompletionsCreate.mockResolvedValue({
       [Symbol.asyncIterator]: async function* () {
         // Kein Output
@@ -230,7 +264,7 @@ describe("chatWithProperty", () => {
     });
 
     const { chatWithProperty } = await import("@/lib/ai/max");
-    const messages = Array.from({ length: 30 }, (_, i) => ({
+    const messages = Array.from({ length: 60 }, (_, i) => ({
       role: "user" as const,
       content: `Frage ${i}`,
     }));
@@ -241,8 +275,8 @@ describe("chatWithProperty", () => {
     for await (const _ of generator) { /* consume */ }
 
     const callArgs = mockCompletionsCreate.mock.calls[0][0];
-    // System-Message + max 20 user messages = max 21 messages total
-    expect(callArgs.messages.length).toBeLessThanOrEqual(21);
+    // System-Message + max 50 user messages = max 51 messages total
+    expect(callArgs.messages.length).toBeLessThanOrEqual(51);
   });
 
   it("sendet korrekte System-Message mit Kontext", async () => {
@@ -256,6 +290,7 @@ describe("chatWithProperty", () => {
       "OCR Inhalt",
       "KI-Zusammenfassung"
     );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _ of generator) { /* consume */ }
 
     const callArgs = mockCompletionsCreate.mock.calls[0][0];
@@ -264,3 +299,333 @@ describe("chatWithProperty", () => {
     expect(systemMsg.content).toContain("KI-Zusammenfassung");
   });
 });
+
+describe("analyzePropertyFallback", () => {
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("gibt low-Risiko zurueck wenn kein Keyword gefunden", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Normaler Text ohne Auffaelligkeiten.", {
+      court: "AG Test",
+      market_value: 100000,
+      city: "Berlin",
+    });
+
+    expect(result.risk_level).toBe("low");
+    expect(result.baulasten).toHaveLength(0);
+    expect(result.sanierungsbedarf).toHaveLength(0);
+    expect(result.mietverhaeltnisse).toHaveLength(0);
+    expect(result.grundbuchbelastungen).toHaveLength(0);
+    expect(result.positive_signals).toHaveLength(1);
+    expect(result.disclaimer).toContain("algorithmisch");
+  });
+
+  it("erkennt Baulast-Keyword und setzt high-Risiko", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Das Objekt hat eine eingetragene Baulast.", {
+      court: "AG Frankfurt",
+    });
+
+    expect(result.baulasten).toHaveLength(1);
+    expect(result.baulasten[0].severity).toBe("high");
+    // extractExcerpt arbeitet auf dem Originaltext, also Grossbuchstabe
+    expect(result.baulasten[0].text_excerpt.toLowerCase()).toContain("baulast");
+    expect(result.risk_level).toBe("high");
+  });
+
+  it("erkennt Sanierungsbedarf-Keyword (asbest)", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Im Keller wurde Asbest festgestellt.", {
+      court: "AG Hamburg",
+    });
+
+    expect(result.sanierungsbedarf).toHaveLength(1);
+    expect(result.sanierungsbedarf[0].severity).toBe("high");
+    expect(result.risk_level).toBe("high");
+  });
+
+  it("erkennt Mietverhaeltnis-Keyword (mieter)", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Die Wohnung ist an Mieter vermietet.", {
+      court: "AG Muenchen",
+    });
+
+    expect(result.mietverhaeltnisse.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("erkennt Grundbuchbelastung (grundschuld)", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Eine Grundschuld ist eingetragen.", {
+      court: "AG Koeln",
+    });
+
+    expect(result.grundbuchbelastungen).toHaveLength(1);
+    expect(result.grundbuchbelastungen[0].type).toBe("Grundschuld");
+    expect(result.grundbuchbelastungen[0].severity).toBe("high");
+  });
+
+  it("setzt critical-Risiko bei 3 oder mehr high-Befunden", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const text = "Das Objekt hat eine Baulast und Asbest im Keller. Grundschuld ist eingetragen.";
+    const result = analyzePropertyFallback(text, { court: "AG Stuttgart" });
+
+    expect(result.risk_level).toBe("critical");
+  });
+
+  it("setzt medium-Risiko bei 2 Gesamtbefunden ohne high", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    // "modernisierung" (low) + "renovierung" (low) = 2 Befunde, kein high
+    const result = analyzePropertyFallback(
+      "Das Gebaeude erfordert Modernisierung und Renovierung.",
+      { court: "AG Bremen" }
+    );
+
+    expect(result.risk_level).toBe("medium");
+    expect(result.positive_signals).toHaveLength(0);
+  });
+
+  it("schliesst city und market_value in Summary ein", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Text", {
+      court: "AG Test",
+      city: "Stuttgart",
+      market_value: 250000,
+    });
+
+    expect(result.summary).toContain("Stuttgart");
+    expect(result.summary).toContain("250.000");
+  });
+
+  it("ignoriert city und market_value wenn null", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Text", {
+      court: "AG Test",
+      city: null,
+      market_value: null,
+    });
+
+    // Summary enthaelt keinen Orts- oder Werthinweis
+    expect(result.summary).not.toContain("Objekt in");
+    expect(result.summary).not.toContain("Verkehrswert");
+  });
+
+  it("extractExcerpt schneidet korrekt aus kurzem Text", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const shortText = "baulast";
+    const result = analyzePropertyFallback(shortText, { court: "AG Test" });
+
+    expect(result.baulasten[0].text_excerpt).toBe("baulast");
+  });
+
+  it("erkennt Wegerecht als medium-severity Baulast", async () => {
+    const { analyzePropertyFallback } = await import("@/lib/ai/max");
+    const result = analyzePropertyFallback("Es besteht ein Wegerecht fuer die Nachbarn.", {
+      court: "AG Nuernberg",
+    });
+
+    expect(result.baulasten).toHaveLength(1);
+    expect(result.baulasten[0].severity).toBe("medium");
+    // Nur 1 Befund mit medium-Severity => low (highCount=0, totalCount=1 < 2)
+    expect(result.risk_level).toBe("low");
+  });
+});
+
+// ----------------------------------------------------------------
+// buildPropertyContextText
+// ----------------------------------------------------------------
+
+const BASE_PROPERTY: Property = {
+  id: "test-id",
+  zvg_id: "BY-12345",
+  court: "AG Muenchen",
+  court_file_number: "123 K 45/2025",
+  auction_date: "2025-06-15T10:00:00.000Z",
+  property_type: "apartment",
+  address: "Teststrasse 1",
+  city: "Muenchen",
+  zip_code: "80333",
+  state: "Bayern",
+  land_abk: "BY",
+  objekt_lage: "Teststrasse 1, 80333 Muenchen",
+  lat: 48.1351,
+  lng: 11.582,
+  market_value: 350000,
+  minimum_bid: 175000,
+  document_urls: [],
+  art_versteigerung: "Zwangsversteigerung",
+  grundbuch: "Muenchen Band 123 Blatt 456",
+  beschreibung: "Schoene 3-Zimmer-Wohnung",
+  versteigerungsort: "Amtsgericht Muenchen, Saal 1",
+  glaeubigerinfo: "Sparkasse Muenchen",
+  geoserver_url: null,
+  status: "active",
+  last_crawled_at: null,
+  created_at: "2025-01-01T00:00:00.000Z",
+  updated_at: "2025-01-01T00:00:00.000Z",
+};
+
+describe("buildPropertyContextText", () => {
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("enthaelt Amtsgericht und ZVG-Portal-Quellenhinweis", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("AG Muenchen");
+    expect(text).toContain("ZVG-Portal");
+    expect(text).toContain("Keine Gutachten-PDFs");
+  });
+
+  it("enthaelt Aktenzeichen wenn vorhanden", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("123 K 45/2025");
+  });
+
+  it("enthaelt formatierten Verkehrswert", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("350.000 EUR");
+  });
+
+  it("zeigt 'nicht angegeben' wenn Verkehrswert null", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText({ ...BASE_PROPERTY, market_value: null });
+    expect(text).toContain("nicht angegeben");
+  });
+
+  it("enthaelt Beschreibung wenn vorhanden", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("Schoene 3-Zimmer-Wohnung");
+    expect(text).toContain("OBJEKTBESCHREIBUNG:");
+  });
+
+  it("enthaelt keinen Grundbuch-Abschnitt wenn null", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText({ ...BASE_PROPERTY, grundbuch: null });
+    expect(text).not.toContain("GRUNDBUCH:");
+  });
+
+  it("enthaelt keinen Beschreibung-Abschnitt wenn null", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText({ ...BASE_PROPERTY, beschreibung: null });
+    expect(text).not.toContain("OBJEKTBESCHREIBUNG:");
+  });
+
+  it("zeigt 'unbekannt' fuer Versteigerungstermin wenn null", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText({ ...BASE_PROPERTY, auction_date: null });
+    expect(text).toContain("unbekannt");
+  });
+
+  it("enthaelt Adresse und Stadt", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("Teststrasse 1");
+    expect(text).toContain("Muenchen");
+  });
+
+  it("zeigt 'nicht angegeben' wenn alle Adressfelder leer", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText({
+      ...BASE_PROPERTY,
+      address: null,
+      city: null,
+      state: null,
+      zip_code: "",
+    });
+    expect(text).toContain("nicht angegeben");
+  });
+
+  it("enthaelt Glaeubigerinfo wenn vorhanden", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("Sparkasse Muenchen");
+    expect(text).toContain("GLAEUBIGERINFORMATION:");
+  });
+
+  it("enthaelt keinen Glaeubigerinfo-Abschnitt wenn null", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText({ ...BASE_PROPERTY, glaeubigerinfo: null });
+    expect(text).not.toContain("GLAEUBIGERINFORMATION:");
+  });
+
+  it("enthaelt art_versteigerung wenn vorhanden", async () => {
+    const { buildPropertyContextText } = await import("@/lib/ai/max");
+    const text = buildPropertyContextText(BASE_PROPERTY);
+    expect(text).toContain("Zwangsversteigerung");
+    expect(text).toContain("ART DER VERSTEIGERUNG:");
+  });
+});
+
+describe("chatWithProperty - contextSource", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("verwendet ZVG-Portal-Label wenn contextSource 'zvg_portal'", async () => {
+    mockCompletionsCreate.mockResolvedValue({
+      [Symbol.asyncIterator]: async function* () {},
+    });
+
+    const { chatWithProperty } = await import("@/lib/ai/max");
+    const generator = chatWithProperty(
+      [{ role: "user", content: "Frage?" }],
+      "ZVG Kontext Text",
+      "Keine Analyse verfuegbar",
+      "zvg_portal"
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _ of generator) { /* consume */ }
+
+    const systemContent = mockCompletionsCreate.mock.calls[0][0].messages[0].content as string;
+    expect(systemContent).toContain("ZVG-PORTAL-DATEN");
+    expect(systemContent).toContain("keine Gutachten-PDFs");
+  });
+
+  it("verwendet Gutachten-Label wenn contextSource 'documents'", async () => {
+    mockCompletionsCreate.mockResolvedValue({
+      [Symbol.asyncIterator]: async function* () {},
+    });
+
+    const { chatWithProperty } = await import("@/lib/ai/max");
+    const generator = chatWithProperty(
+      [{ role: "user", content: "Frage?" }],
+      "OCR Text",
+      "Zusammenfassung",
+      "documents"
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _ of generator) { /* consume */ }
+
+    const systemContent = mockCompletionsCreate.mock.calls[0][0].messages[0].content as string;
+    expect(systemContent).toContain("VOLLSTAENDIGER GUTACHTEN-TEXT");
+  });
+
+  it("verwendet Gutachten-Label als Standard (kein contextSource Argument)", async () => {
+    mockCompletionsCreate.mockResolvedValue({
+      [Symbol.asyncIterator]: async function* () {},
+    });
+
+    const { chatWithProperty } = await import("@/lib/ai/max");
+    const generator = chatWithProperty(
+      [{ role: "user", content: "Frage?" }],
+      "OCR Text",
+      "Zusammenfassung"
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _ of generator) { /* consume */ }
+
+    const systemContent = mockCompletionsCreate.mock.calls[0][0].messages[0].content as string;
+    expect(systemContent).toContain("VOLLSTAENDIGER GUTACHTEN-TEXT");
+  });
+});
+

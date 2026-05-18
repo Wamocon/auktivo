@@ -1,12 +1,15 @@
 name: Docs - GitHub Pages
 
-# GitHub Pages Deployments sind nur vom Default-Branch (main) erlaubt.
-# Automatisch: bei Push in main.
-# Manuell: workflow_dispatch (nur von main aus ausfuehren).
+# Workflow wird ausgeloest wenn docs/**-Dateien per Push auf main geaendert werden.
+# Bei pull_request-Events laeuft kein Job (GitHub Pages erlaubt Deploy nur von main).
+# Die paths-Filter stellen sicher, dass der Workflow nur bei relevanten Aenderungen
+# in docs/ ausgeloest wird - nicht bei jedem beliebigen Push.
 on:
   push:
-    branches:
-      - main
+    paths:
+      - "docs/**/*.html"
+      - "docs/**/*.css"
+      - "docs/**/*.js"
   workflow_dispatch:
     inputs:
       reason:
@@ -25,7 +28,10 @@ permissions:
 
 jobs:
   deploy-docs:
-    name: Deploy to GitHub Pages
+    name: Deploy Produkthandbuch zu GitHub Pages
+    # Nur auf main deployen - GitHub Pages environment-Schutzregeln
+    # blockieren Deployments von Feature-Branches und PR-Branches.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     environment:

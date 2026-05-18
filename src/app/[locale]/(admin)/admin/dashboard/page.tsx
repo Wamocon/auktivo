@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Activity, Users, Home, TrendingUp, RefreshCw, AlertTriangle } from "lucide-react";
+import { Activity, Users, Home, TrendingUp, FileText } from "lucide-react";
+import { CrawlerProgressPanel } from "../crawler/_components/crawler-progress-panel";
 
 export default async function AdminDashboardPage({
   params,
@@ -24,23 +25,19 @@ export default async function AdminDashboardPage({
     { count: propertyCount },
     { count: proCount },
     { count: analysisCount },
+    { count: documentCount },
     { data: recentUsers },
-    { data: crawlerRuns },
   ] = await Promise.all([
     admin.from("profiles").select("*", { count: "exact", head: true }),
     admin.from("properties").select("*", { count: "exact", head: true }),
     admin.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "pro"),
     admin.from("property_analyses").select("*", { count: "exact", head: true }),
+    admin.from("property_documents").select("*", { count: "exact", head: true }),
     admin
       .from("profiles")
       .select("id, full_name, email, plan, created_at")
       .order("created_at", { ascending: false })
       .limit(10),
-    admin
-      .from("crawler_runs")
-      .select("id, started_at, finished_at, properties_found, new_properties_count, status")
-      .order("started_at", { ascending: false })
-      .limit(5),
   ]);
 
   const stats = [
@@ -72,6 +69,13 @@ export default async function AdminDashboardPage({
       color: "text-purple-600",
       bg: "bg-purple-100 dark:bg-purple-900/20",
     },
+    {
+      label: "PDF-Dokumente",
+      value: documentCount ?? 0,
+      icon: FileText,
+      color: "text-red-600",
+      bg: "bg-red-100 dark:bg-red-900/20",
+    },
   ];
 
   return (
@@ -102,87 +106,7 @@ export default async function AdminDashboardPage({
       </div>
 
       {/* Crawler Trigger */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
-          <RefreshCw className="h-5 w-5" /> Crawler
-        </h2>
-        <div className="flex flex-col gap-4">
-          {crawlerRuns && crawlerRuns.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left dark:border-zinc-700">
-                    <th className="pb-2 text-xs font-medium text-zinc-500">Gestartet</th>
-                    <th className="pb-2 text-xs font-medium text-zinc-500">Status</th>
-                    <th className="pb-2 text-xs font-medium text-zinc-500">Gefunden</th>
-                    <th className="pb-2 text-xs font-medium text-zinc-500">Dauer</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {crawlerRuns.map((run) => {
-                    const duration =
-                      run.finished_at && run.started_at
-                        ? Math.round(
-                            (new Date(run.finished_at).getTime() -
-                              new Date(run.started_at).getTime()) /
-                              1000
-                          )
-                        : null;
-                    return (
-                      <tr key={run.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                        <td className="py-2 text-zinc-700 dark:text-zinc-300">
-                          {new Date(run.started_at).toLocaleString("de-DE")}
-                        </td>
-                        <td className="py-2">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                              run.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : run.status === "running"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {run.status}
-                          </span>
-                        </td>
-                        <td className="py-2 text-zinc-700 dark:text-zinc-300">
-                          {run.properties_found ?? run.new_properties_count ?? "-"}
-                        </td>
-                        <td className="py-2 text-zinc-700 dark:text-zinc-300">
-                          {duration !== null ? `${duration}s` : "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-800">
-              <AlertTriangle className="h-4 w-4" /> Noch keine Crawler-Laeufe vorhanden.
-            </div>
-          )}
-          <form
-            action={async () => {
-              "use server";
-              await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/crawler/trigger`, {
-                method: "POST",
-                headers: {
-                  "x-cron-secret": process.env.CRON_SECRET ?? "",
-                },
-              });
-            }}
-          >
-            <button
-              type="submit"
-              className="flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
-            >
-              <RefreshCw className="h-4 w-4" /> Crawler jetzt starten
-            </button>
-          </form>
-        </div>
-      </div>
+      <CrawlerProgressPanel />
 
       {/* Recent Users */}
       <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">

@@ -1,19 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "Auktivo",
-  description: "KI-gestutzte Zwangsversteigerungs-Analyse",
-};
-
+// Minimales Root-Layout fuer next-intl App Router.
+// Das [locale]/layout.tsx stellt <html> und <body> bereit.
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
-  return (
-    <html lang="de" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">{children}</body>
-    </html>
-  );
+}) {
+  return children;
 }

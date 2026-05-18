@@ -2,13 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
-import { isProtectedRoute, isAdminRoute, isAuthRoute, extractLocale } from "@/lib/utils/routes";
+import { isProtectedRoute, isAuthRoute, extractLocale } from "@/lib/utils/routes";
 
-const schema = (process.env.SUPABASE_DB_SCHEMA ?? "auktivo_dev") as string;
+const schema = (process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA ?? "public") as string;
 
 const intlMiddleware = createMiddleware(routing);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // next-intl Middleware fuer Sprachweiterleitung
@@ -38,7 +38,13 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getSession liest Cookie-lokal (kein Netzwerkaufruf) - schnell in Middleware
+  // getUser (mit Netzwerkvalidierung) geschieht in Server Components
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const user = session?.user ?? null;
 
   // Nicht-authentifizierte Nutzer auf Login umleiten
   if (!user && isProtectedRoute(pathname)) {
@@ -46,19 +52,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/login`, request.url));
   }
 
-  // Admin-Routen pruefen
-  if (user && isAdminRoute(pathname)) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.is_admin) {
-      const locale = extractLocale(pathname);
-      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
-    }
-  }
+  // Admin-Routen: Pruefung geschieht im Admin-Layout (nicht in Middleware)
+  // um DB-Aufrufe pro Request zu vermeiden
 
   // Eingeloggte Nutzer von Auth-Seiten weglenken
   if (user && isAuthRoute(pathname)) {
@@ -71,6 +66,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|api/webhooks|api/crawler|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

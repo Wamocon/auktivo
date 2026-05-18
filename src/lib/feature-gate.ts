@@ -38,18 +38,32 @@ export async function checkSearchLimit(
   userId: string
 ): Promise<{ allowed: boolean; remaining: number }> {
   const supabase = createAdminClient();
+
+  // Pro-Nutzer haben unbegrenzte Suchen - Plan zuerst prüfen, RPC überspringen
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("id", userId)
+    .single();
+
+  if (profileData?.plan === "pro") {
+    return { allowed: true, remaining: -1 };
+  }
+
+  // Nur für Free-Nutzer: atomaren Zähler in DB erhöhen und Limit prüfen
   const { data, error } = await supabase.rpc("increment_search_count", {
     p_user_id: userId,
   });
 
   if (error) {
-    console.error("checkSearchLimit error:", error);
-    return { allowed: false, remaining: 0 };
+    // Bei DB-Fehler: erlauben statt sperren (besser UX, kein False-Negative)
+    console.error("checkSearchLimit RPC error:", error);
+    return { allowed: true, remaining: 0 };
   }
 
   return {
-    allowed: data?.allowed ?? false,
-    remaining: data?.remaining ?? 0,
+    allowed: (data as { allowed?: boolean })?.allowed ?? false,
+    remaining: (data as { remaining?: number })?.remaining ?? 0,
   };
 }
 

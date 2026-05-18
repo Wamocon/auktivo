@@ -1,4 +1,4 @@
--- =============================================================
+﻿-- =============================================================
 -- Auktivo - Vollstaendiges 3-Schema Setup
 -- Schemas: auktivo_dev | auktivo_test | auktivo_prod
 -- Ausfuehren: docker exec -i supabase_db_auktivo psql -U postgres -d postgres -f /tmp/setup_all_schemas.sql
@@ -10,6 +10,10 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auktivo_test') THEN CREATE SCHEMA auktivo_test; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auktivo_prod') THEN CREATE SCHEMA auktivo_prod; END IF;
 END $$;
+
+-- PostgREST Rollen-GUC (ueberschreibt PGRST_DB_SCHEMAS env-Variable)
+ALTER ROLE authenticator SET "pgrst.db_schemas" =
+  'public,graphql_public,auktivo_dev,auktivo_test,auktivo_prod';
 
 -- =============================================================
 -- MACRO: Tabellen, Indizes, RLS, Policies, Funktionen und Trigger
@@ -34,6 +38,10 @@ BEGIN
         full_name               text,
         plan                    text          NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'pro')),
         is_admin                boolean       NOT NULL DEFAULT false,
+        user_type               text          NOT NULL DEFAULT 'private' CHECK (user_type IN ('private', 'business')),
+        phone                   text,
+        company_name            text,
+        email_notifications     boolean       NOT NULL DEFAULT true,
         stripe_customer_id      text UNIQUE,
         stripe_subscription_id  text UNIQUE,
         subscription_status     text,
@@ -201,7 +209,7 @@ BEGIN
         id                       uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
         started_at               timestamptz NOT NULL DEFAULT now(),
         finished_at              timestamptz,
-        status                   text        NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','failed')),
+        status                   text        NOT NULL DEFAULT 'running' CHECK (status IN ('running','completed','failed','enriching')),
         properties_found         integer     NOT NULL DEFAULT 0,
         new_properties_count     integer     NOT NULL DEFAULT 0,
         updated_properties_count integer     NOT NULL DEFAULT 0,

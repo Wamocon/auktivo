@@ -2,7 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 
-const schema = (process.env.SUPABASE_DB_SCHEMA ?? "auktivo_dev") as string;
+const schema = (process.env.NEXT_PUBLIC_SUPABASE_DB_SCHEMA ?? "public") as string;
 
 export function createClient() {
   return createBrowserClient(

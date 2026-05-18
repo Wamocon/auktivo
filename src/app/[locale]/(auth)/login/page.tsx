@@ -49,10 +49,11 @@ export default function LoginPage() {
 
       <form onSubmit={handleLogin} className="flex flex-col gap-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             {t("email")}
           </label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -65,17 +66,19 @@ export default function LoginPage() {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t("password")}</label>
+            <label htmlFor="login-password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{t("password")}</label>
             <Link href="/passwort-vergessen" className="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400">
               {t("forgot_password")}
             </Link>
           </div>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
+            placeholder="••••••••"
             className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
           />
         </div>

@@ -28,13 +28,13 @@ Auktivo loest dieses Problem:
 
 | Schicht | Technologie |
 |---|---|
-| Framework | Next.js 16.2 (App Router, TypeScript) |
+| Framework | Next.js 16.2.6 (App Router, TypeScript) |
 | Styling | Tailwind CSS v4 |
 | Datenbank & Auth | Supabase (PostgreSQL, RLS, Schema `auktivo_dev`) |
 | KI | AI MAX (OpenAI-kompatibler, selbst gehosteter Endpunkt) |
 | Payment | Stripe (monatliches Abo, Customer Portal) |
 | i18n | next-intl v4 (Deutsch + Englisch) |
-| Tests | Vitest v4, Testing Library (135 Tests, 98.57% Coverage) |
+| Tests | Vitest v4, Testing Library (178 Tests, >99% Coverage) |
 | CI/CD | GitHub Actions + Vercel |
 
 ---
@@ -68,7 +68,7 @@ cp .env.example .env.local
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-SUPABASE_DB_SCHEMA=auktivo_dev
+NEXT_PUBLIC_SUPABASE_DB_SCHEMA=auktivo_dev
 
 # Stripe
 STRIPE_SECRET_KEY=sk_test_...
@@ -77,9 +77,9 @@ STRIPE_PRO_PRICE_ID=price_...
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # AI MAX
-MAX_API_URL=https://your-max-instance.example.com
+MAX_API_BASE_URL=https://your-max-instance.example.com
 MAX_API_KEY=your-api-key
-MAX_MODEL=gpt-4o
+MAX_MODEL=max-default
 ```
 
 ### 3. Supabase lokal starten
@@ -131,6 +131,7 @@ src/
     ai/max.ts               # KI-Analyse & Chat (AI MAX Client)
     stripe.ts               # Stripe-Integration
     feature-gate.ts         # Free/Pro Plan-Abgrenzung
+    email.ts                # E-Mail-Benachrichtigungen (Suchalarm + Crawler-Fehler via Resend)
     supabase/               # Supabase-Clients (Browser, Server, Admin)
     utils/
       routes.ts             # Route-Klassifizierung fuer Middleware
@@ -171,20 +172,22 @@ docs/
 
 | Workflow | Trigger | Aufgabe |
 |---|---|---|
-| `unit-tests.yml` | Push alle Branches | Vitest + Coverage (Threshold 90%) |
+| `unit-tests.yml` | Push alle Branches | Vitest + Coverage (Threshold 80% Branch / 90% Lines) |
 | `validation-lint.yml` | Push alle Branches | ESLint |
 | `validation-typecheck.yml` | Push alle Branches | TypeScript Check |
-| `validation-build.yml` | Push alle Branches | Next.js Build |
-| `deploy-preview.yml` | Pull Request -> main | Vercel Preview + PR-Kommentar |
-| `deploy-production.yml` | Push -> main (Merge) | Vercel Produktion |
+| `validation-build.yml` | Push alle Branches | Next.js Build (inkl. devDependencies) |
+| `deploy-preview.yml` | Push alle Branches ausser main | Vercel Preview Deploy |
+| `deploy-production.yml` | GitHub Release veroeffentlicht | Vercel Produktion |
 | `docs.yml` | Push -> main (`docs/`) | GitHub Pages (Produkthandbuch) |
 
 **Benoetigte GitHub Secrets:**
 `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`,
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_SCHEMA`,
+`NEXT_PUBLIC_SUPABASE_DB_SCHEMA`, `NEXT_PUBLIC_APP_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`,
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`,
-`NEXT_PUBLIC_APP_URL`, `MAX_API_URL`, `MAX_API_KEY`, `MAX_MODEL`
+`MAX_API_BASE_URL`, `MAX_API_KEY`, `MAX_MODEL`,
+`RESEND_API_KEY`, `RESEND_FROM_EMAIL`
 
 ---
 
@@ -195,17 +198,20 @@ npm run test:coverage
 ```
 
 ```
-Tests:    135 passed
-Coverage: 98.57% (Threshold: 90%)
+Tests:    178 passed
+Coverage: 99.2% Lines | 99.3% Stmts | 97.29% Branch | 100% Funcs
+          (Thresholds: 80% Branch / 90% Lines / 90% Funcs)
 ```
 
 | Testdatei | Tests | Coverage |
 |---|---|---|
-| `routes.test.ts` | 35 | 100% |
+| `routes.test.ts` | 36 | 100% |
 | `date.test.ts` | 16 | 100% |
-| `feature-gate.test.ts` | 19 | 93% |
-| `stripe.test.ts` | 11 | 100% |
-| `max.test.ts` | 13 | 100% |
+| `bundeslaender.test.ts` | 6 | 100% |
+| `feature-gate.test.ts` | 20 | 94% |
+| `stripe.test.ts` | 12 | 100% |
+| `max.test.ts` | 25 | 100% Lines / 98% Branch |
+| `email.test.ts` | 22 | 100% Lines / 96% Branch |
 | `routing.test.ts` | 12 | 100% |
 | `database.test.ts` | 29 | Typen |
 
