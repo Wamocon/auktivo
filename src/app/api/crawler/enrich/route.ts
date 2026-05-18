@@ -33,10 +33,10 @@ function getBaseUrl(): string {
 }
 
 /** Internes Auth-Token - konsistent mit run-land.
- * VERCEL_DEPLOYMENT_ID hat Prioritaet (automatisch von Vercel gesetzt, immer konsistent).
- * || statt ?? um leere Strings ("") ebenfalls zum Fallback fuehren zu lassen. */
+ * CRON_SECRET: projekt-weit konsistent, unabhaengig vom Deployment.
+ * Kein VERCEL_DEPLOYMENT_ID (deployment-spezifisch, kann bei Rolling Deploys mismatch). */
 function resolveAuthToken(): string {
-  return process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
+  return process.env.CRON_SECRET?.trim() || "";
 }
 
 export async function POST(request: Request) {

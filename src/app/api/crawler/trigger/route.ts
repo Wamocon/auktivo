@@ -15,7 +15,7 @@ function getBaseUrl(): string {
 export async function POST() {
   const headersList = await headers();
   const authorization = headersList.get("authorization");
-  const validToken = process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
+  const validToken = process.env.CRON_SECRET?.trim() || "";
   const providedSecret = (authorization ?? "").replace(/^Bearer /, "").trim();
 
   if (!validToken || providedSecret !== validToken) {
@@ -66,7 +66,7 @@ export async function POST() {
   // Ersten Land-Aufruf nach dem Response anstoßen
   after(async () => {
     try {
-      const authToken = process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
+      const authToken = process.env.CRON_SECRET?.trim() || "";
       const res = await fetch(`${baseUrl}/api/crawler/run-land?run_id=${runId}&index=0`, {
         method: "POST",
         headers: { Authorization: `Bearer ${authToken}` },

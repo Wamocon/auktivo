@@ -26,16 +26,14 @@ function getBaseUrl(): string {
 }
 
 /** Internes Auth-Token fuer Self-Chain-Aufrufe.
- * Prioritaet: VERCEL_DEPLOYMENT_ID > CRON_SECRET
+ * Primaer: CRON_SECRET - projekt-weit konsistent, deployment-unabhaengig.
+ * Kein VERCEL_DEPLOYMENT_ID: das ist deployment-spezifisch und kann bei Rolling Deploys
+ * oder Load-Balancer-Routing zu 401 fuehren wenn Sender und Empfaenger
+ * aus verschiedenen Deployments bedient werden.
  *
- * VERCEL_DEPLOYMENT_ID wird von Vercel automatisch und konsistent fuer ALLE Funktionen
- * im selben Deployment gesetzt - kein manuelles Setup, kein Whitespace-Problem moeglich.
- * CRON_SECRET als Fallback fuer lokale Entwicklung (wo VERCEL_DEPLOYMENT_ID nicht existiert).
- *
- * WICHTIG: || statt ?? - damit leere Strings ("") ebenfalls zum Fallback fuehren,
- * nicht nur null/undefined. */
+ * WICHTIG: || statt ?? - damit leere Strings ("") ebenfalls zum Fallback fuehren. */
 function resolveAuthToken(): string {
-  return process.env.VERCEL_DEPLOYMENT_ID || process.env.CRON_SECRET?.trim() || "";
+  return process.env.CRON_SECRET?.trim() || "";
 }
 
 export async function POST(request: Request) {
