@@ -11,7 +11,7 @@ scripts/
 hooks/
 
 # Supabase-Migrationsdateien (werden nur lokal/per CLI ausgefuehrt)
-supabase/
+/supabase/
 
 # Testdateien
 src/__tests__/
