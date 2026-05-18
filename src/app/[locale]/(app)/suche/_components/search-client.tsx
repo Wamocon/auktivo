@@ -124,10 +124,11 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
   // Filter-State
   const [zip, setZip] = useState("");
   const [bundesland, setBundesland] = useState("");
-  const [radius, setRadius] = useState<number>(25);
+  const [radius, setRadius] = useState<number>(20);
   const [propertyTypes, setPropertyTypes] = useState<PropertyType[]>([]);
   const [budgetMin, setBudgetMin] = useState<string>("");
   const [budgetMax, setBudgetMax] = useState<string>("");
+  const [locating, setLocating] = useState(false);
   const [terminVon, setTerminVon] = useState("");
   const [terminBis, setTerminBis] = useState("");
   const [sortBy, setSortBy] = useState("auction_date_asc");
@@ -204,13 +205,76 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
     setLoading(false);
   }, [zip, bundesland, radius, propertyTypes, budgetMin, budgetMax, terminVon, terminBis, sortBy, court]);
 
-  // Beim ersten Rendern: alle Objekte ohne Filter laden (kostenlos)
+  // Beim ersten Rendern: Standort ermitteln und Suche mit 20-km-Umkreis starten.
+  // Fallback: alle Objekte ohne Ortsfilter laden wenn Standort nicht verfuegbar.
   useEffect(() => {
     if (!initialLoadDone.current) {
       initialLoadDone.current = true;
-      void executeSearch({ zip: "", bundesland: "", propertyTypes: [], budgetMin: "", budgetMax: "", terminVon: "", terminBis: "", court: "" });
+
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        setLocating(true);
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              const { latitude, longitude } = position.coords;
+              const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+                { headers: { "Accept-Language": "de" } }
+              );
+              const data = await res.json() as { address?: { postcode?: string } };
+              const plz = (data?.address?.postcode ?? "").replace(/\D/g, "").slice(0, 5);
+              setLocating(false);
+              if (plz.length === 5) {
+                setZip(plz);
+                void executeSearch({ zip: plz, radius: 20 });
+              } else {
+                void executeSearch({ zip: "", radius: 20 });
+              }
+            } catch {
+              setLocating(false);
+              void executeSearch({ zip: "", radius: 20 });
+            }
+          },
+          () => {
+            // Standort verweigert oder nicht verfuegbar - offene Suche
+            setLocating(false);
+            void executeSearch({ zip: "", bundesland: "", propertyTypes: [], budgetMin: "", budgetMax: "", terminVon: "", terminBis: "", court: "" });
+          },
+          { timeout: 8000, maximumAge: 300_000 }
+        );
+      } else {
+        void executeSearch({ zip: "", bundesland: "", propertyTypes: [], budgetMin: "", budgetMax: "", terminVon: "", terminBis: "", court: "" });
+      }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function locateUser() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "de" } }
+          );
+          const data = await res.json() as { address?: { postcode?: string } };
+          const plz = (data?.address?.postcode ?? "").replace(/\D/g, "").slice(0, 5);
+          setLocating(false);
+          if (plz.length === 5) {
+            setZip(plz);
+            setRadius(20);
+            void executeSearch({ zip: plz, radius: 20 });
+          }
+        } catch {
+          setLocating(false);
+        }
+      },
+      () => setLocating(false),
+      { timeout: 8000 }
+    );
+  }
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -218,7 +282,7 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
   }
 
   function resetFilters() {
-    setZip(""); setBundesland(""); setRadius(25); setPropertyTypes([]);
+    setZip(""); setBundesland(""); setRadius(20); setPropertyTypes([]);
     setBudgetMin(""); setBudgetMax(""); setTerminVon(""); setTerminBis("");
     setCourt(""); setSortBy("auction_date_asc");
     void executeSearch({ zip: "", bundesland: "", propertyTypes: [], budgetMin: "", budgetMax: "", terminVon: "", terminBis: "", court: "", sortBy: "auction_date_asc" });
@@ -291,24 +355,40 @@ export function SearchClient({ profile, locale }: SearchClientProps) {
               </select>
             </div>
 
-            {/* PLZ */}
+            {/* PLZ + Standort-Button */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("zip_label")}</label>
-              <input
-                type="text"
-                value={zip}
-                onChange={(e) => setZip(e.target.value)}
-                placeholder={t("zip_placeholder")}
-                maxLength={5}
-                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-              />
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  placeholder={t("zip_placeholder")}
+                  maxLength={5}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm outline-none transition-all placeholder:text-zinc-400 focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                />
+                <button
+                  type="button"
+                  title="Meinen Standort verwenden"
+                  onClick={locateUser}
+                  disabled={locating}
+                  className="flex shrink-0 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 transition-colors hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:border-brand-400"
+                >
+                  {locating ? <Loader2 className="h-4 w-4 animate-spin text-brand-500" /> : <MapPin className="h-4 w-4" />}
+                </button>
+              </div>
+              {locating && (
+                <p className="mt-1.5 flex items-center gap-1 text-xs text-brand-500">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Standort wird ermittelt...
+                </p>
+              )}
             </div>
 
             {/* Umkreis */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("radius")}</label>
               <div className="grid grid-cols-4 gap-1">
-                {[10, 25, 50, 100].map((r) => (
+                {[10, 20, 50, 100].map((r) => (
                   <button
                     key={r}
                     type="button"
