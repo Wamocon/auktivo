@@ -88,6 +88,37 @@ export async function GET() {
     }
   }
 
+  // Cross-Instance-Detection: In-Memory zeigt "idle", aber der Crawler laueft in
+  // einer anderen Vercel-Instanz (fire-and-forget in Trigger-Route).
+  // Pruefe DB auf aktive crawler_runs der letzten 10 Minuten.
+  if (progress.phase === "idle" || progress.phase === "completed") {
+    const admin = createAdminClient();
+    const { data: activeRun } = await admin
+      .from("crawler_runs")
+      .select("id, started_at, status")
+      .eq("status", "running")
+      .gte("started_at", new Date(Date.now() - 10 * 60 * 1_000).toISOString())
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeRun) {
+      // Crawler laeuft in anderer Instanz - synthetischen "running"-State zurueckgeben
+      return NextResponse.json(
+        {
+          ...progress,
+          phase: "running" as const,
+          runId: activeRun.id as string,
+          startedAt: activeRun.started_at as string,
+          currentLand: null,
+          currentStep: null,
+          _source: "db" as const,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
+  }
+
   return NextResponse.json(progress, {
     headers: { "Cache-Control": "no-store" },
   });

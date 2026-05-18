@@ -97,6 +97,11 @@ export function CrawlerProgressPanel() {
         const body = (await res.json()) as { error?: string };
         setStartError(body.error ?? `Fehler ${res.status}`);
       } else {
+        const body = (await res.json()) as { status: string };
+        // "already_running": anderer Prozess hat den Crawler - Status einfach neu laden
+        if (body.status === "already_running") {
+          setStartError(null);
+        }
         await fetchStatus();
       }
     } catch {
