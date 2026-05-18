@@ -107,9 +107,42 @@ export function PropertyTabs({ property: p, analysis: a, documents, isPro, local
     setTriggerMsg(null);
     try {
       const res = await fetch(`/api/ai/analyze/${p.id}`, { method: "POST" });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; code?: string };
       if (!res.ok) {
-        setTriggerMsg(data.error ?? `Fehler ${res.status}`);
+        if (data.code === "no_ocr_text") {
+          // Dokumente automatisch laden, dann Analyse erneut starten
+          setTriggerMsg("Dokumente werden geladen (kann bis zu 60 Sekunden dauern)...");
+          let fetchOk = false;
+          try {
+            const fetchRes = await fetch(`/api/properties/${p.id}/fetch-documents`, { method: "POST" });
+            let fetchData: { count?: number; total?: number; error?: string } = {};
+            try { fetchData = await fetchRes.json() as typeof fetchData; } catch { /* ignore */ }
+            if (fetchRes.ok && (fetchData.count ?? 0) > 0) {
+              fetchOk = true;
+              setTriggerMsg("Dokumente geladen. Analyse wird gestartet...");
+            } else {
+              setTriggerMsg(
+                fetchData.error ??
+                "Dokumente konnten nicht geladen werden. Bitte verwende den 'Dokumente'-Tab."
+              );
+            }
+          } catch {
+            setTriggerMsg("Verbindungsfehler beim Laden der Dokumente.");
+          }
+          if (fetchOk) {
+            // Analyse erneut starten nach erfolgreichen Dokument-Download
+            const retryRes = await fetch(`/api/ai/analyze/${p.id}`, { method: "POST" });
+            const retryData = (await retryRes.json()) as { error?: string };
+            if (!retryRes.ok) {
+              setTriggerMsg(retryData.error ?? `Analyse-Fehler ${retryRes.status}`);
+            } else {
+              setTriggerMsg("Analyse wurde gestartet. Seite bitte nach ca. 2 Minuten neu laden.");
+              router.refresh();
+            }
+          }
+        } else {
+          setTriggerMsg(data.error ?? `Fehler ${res.status}`);
+        }
       } else {
         setTriggerMsg("Analyse wurde gestartet. Seite bitte nach ca. 2 Minuten neu laden.");
       }

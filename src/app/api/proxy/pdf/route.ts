@@ -89,6 +89,15 @@ export async function GET(request: Request) {
     }
 
     const contentType = upstream.headers.get("content-type") ?? "application/pdf";
+
+    // ZVG gibt bei abgelaufener oder fehlender Session HTML statt PDF zurueck
+    if (contentType.includes("text/html")) {
+      return NextResponse.json(
+        { error: "Dokument nicht verfuegbar (ZVG-Session abgelaufen). Bitte Seite neu laden." },
+        { status: 410 }
+      );
+    }
+
     const body = await upstream.arrayBuffer();
 
     return new Response(body, {

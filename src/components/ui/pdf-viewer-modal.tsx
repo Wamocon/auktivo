@@ -44,6 +44,29 @@ export function PdfViewerModal({ url, fileName, onClose }: PdfViewerModalProps) 
 
   const viewUrl = buildViewUrl(url);
 
+  /**
+   * Erkennt JSON-Fehlerantworten des Proxy im iframe-onLoad Event.
+   * Wenn der Proxy einen Fehler (410/502) mit JSON-Body zurueckgibt, zeigt der
+   * Browser den JSON-Text im Iframe. Wir lesen ihn aus und zeigen stattdessen
+   * die echte Fehlermeldung. Bei PDF-Inhalt ist contentDocument nicht zugaenglich.
+   */
+  function handleIframeLoad(e: React.SyntheticEvent<HTMLIFrameElement>) {
+    setLoading(false);
+    if (!viewUrl.startsWith("/api/proxy/pdf")) return;
+    try {
+      const doc = (e.currentTarget as HTMLIFrameElement).contentDocument;
+      if (doc?.body) {
+        const text = doc.body.innerText.trim();
+        if (text.startsWith("{") && text.includes('"error"')) {
+          const json = JSON.parse(text) as { error?: string };
+          setError(json.error ?? "Dokument nicht verfuegbar. Bitte im ZVG-Portal oeffnen.");
+        }
+      }
+    } catch {
+      // PDF-Inhalt oder cross-origin - kein Fehler, normal
+    }
+  }
+
   // ESC-Taste schliessen
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -141,7 +164,7 @@ export function PdfViewerModal({ url, fileName, onClose }: PdfViewerModalProps) 
               src={viewUrl}
               className="h-full w-full"
               title={fileName}
-              onLoad={() => setLoading(false)}
+              onLoad={handleIframeLoad}
               onError={() => {
                 setLoading(false);
                 setError("Das Dokument konnte nicht geladen werden.");

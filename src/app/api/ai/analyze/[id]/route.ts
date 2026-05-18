@@ -56,7 +56,10 @@ export async function POST(
 
   if (!ocrText) {
     return NextResponse.json(
-      { error: "Kein OCR-Text verfuegbar. Dokument wird noch verarbeitet." },
+      {
+        error: "Kein OCR-Text verfuegbar. Bitte lade zuerst die Dokumente im Dokumente-Tab.",
+        code: "no_ocr_text",
+      },
       { status: 422 }
     );
   }

@@ -11,6 +11,28 @@ import { ExternalLink, Heart, MessageSquare, AlertTriangle, Calendar } from "luc
 import { ChatFloatButton } from "./_components/chat-float-button";
 import type { Property, PropertyAnalysis, PropertyDocument } from "@/lib/types/database";
 
+/** Holt Koordinaten via Nominatim wenn lat/lng nicht in DB gespeichert sind. */
+async function geocodeProperty(p: Property): Promise<{ lat: number; lng: number } | null> {
+  if (p.lat && p.lng) return null;
+  const q = [p.address, p.zip_code, p.city, "Deutschland"].filter(Boolean).join(", ");
+  if (!q.trim()) return null;
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=de`,
+      {
+        headers: { "User-Agent": "Auktivo/1.0 (https://auktivo.de)" },
+        next: { revalidate: 86400 },
+      }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as Array<{ lat: string; lon: string }>;
+    if (data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {
+    // Geocoding optional - kein Fehler
+  }
+  return null;
+}
+
 export default async function PropertyDetailPage({
   params,
 }: {
@@ -39,6 +61,14 @@ export default async function PropertyDetailPage({
   const p = property as Property;
   const a = analysis as PropertyAnalysis | null;
   const docs = (documents ?? []) as PropertyDocument[];
+
+  // Koordinaten geocoden wenn nicht vorhanden (Nominatim, 24h gecacht)
+  const coords = await geocodeProperty(p);
+  const propertyWithCoords: Property = coords ? { ...p, lat: coords.lat, lng: coords.lng } : p;
+  // Koordinaten in DB persistieren (fire-and-forget, kein await)
+  if (coords) {
+    void admin.from("properties").update({ lat: coords.lat, lng: coords.lng }).eq("id", p.id);
+  }
 
   // ZVG-Objekt-URL aus zvg_id aufbauen (Format: "NW-1234" oder "NW_1234")
   const zvgParts = (p.zvg_id ?? "").split(/[-_]/);
@@ -70,7 +100,7 @@ export default async function PropertyDetailPage({
         <div className="lg:col-span-2">
           {/* Objekt-Header */}
           <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-            <PropertyImage property={p} />
+            <PropertyImage property={propertyWithCoords} />
             <div className="p-6">
             <div className="mb-4 flex flex-wrap items-start gap-3">
               <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
@@ -185,7 +215,7 @@ export default async function PropertyDetailPage({
 
           {/* Tabs-Bereich */}
           <PropertyTabs
-            property={p}
+            property={propertyWithCoords}
             analysis={isPro ? a : null}
             documents={docs}
             isPro={isPro}
