@@ -45,6 +45,20 @@ export async function POST(
     return NextResponse.json({ analysis: existingAnalysis });
   }
 
+  // Haengende "processing"-Records nach 5 Min. als fehlgeschlagen markieren
+  // und automatisch neu starten (verhindert ewige Spinner-Schleifen im UI).
+  if (existingAnalysis?.analysis_status === "processing") {
+    const updatedAt = existingAnalysis.analyzed_at
+      ? new Date(existingAnalysis.analyzed_at as string)
+      : null;
+    const ageMs = updatedAt ? Date.now() - updatedAt.getTime() : Infinity;
+    if (ageMs < 5 * 60 * 1_000) {
+      // Noch frisch - Frontend weiter warten lassen
+      return NextResponse.json({ status: "processing" });
+    }
+    // Zu alt (>5 Min.) - neu starten
+  }
+
   const { data: documents } = await admin
     .from("property_documents")
     .select("ocr_text, ocr_status")
@@ -55,10 +69,12 @@ export async function POST(
   const contextText = ocrText || buildPropertyContextText(property);
   const dataSource = ocrText ? "documents" : "zvg_portal";
 
-  // Status sofort auf "processing" setzen und Antwort senden
+  // Status sofort auf "processing" setzen - analyzed_at als Start-Zeitstempel
+  // (wird beim Abschluss mit der echten Fertigstellungszeit ueberschrieben)
   await admin.from("property_analyses").upsert({
     property_id: propertyId,
     analysis_status: "processing",
+    analyzed_at: new Date().toISOString(),
   });
 
   // Analyse im Hintergrund ausfuehren - laeuft nach dem Response-Versand weiter

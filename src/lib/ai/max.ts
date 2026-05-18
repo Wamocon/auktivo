@@ -11,8 +11,10 @@ function getMaxClient(): OpenAI {
       apiKey: process.env.MAX_API_KEY || "sk-max-litellm-2026",
       // Port 11434 = Ollama direkt. Wenn LiteLLM-Proxy (Port 4000) laeuft, diesen bevorzugen.
       baseURL: process.env.MAX_API_BASE_URL || "http://localhost:11434/v1",
-      timeout: 1_800_000, // 30 Minuten - selbstgehostet, kein Limit
-      maxRetries: 2,
+      // 2 Minuten: reicht fuer Flash-Modelle (<30s) und kleine Anfragen an 35B-Modell.
+      // Bei Timeout greift automatisch der algorithmische Fallback.
+      timeout: 120_000,
+      maxRetries: 0, // Kein Retry - sofort Fallback statt weitere Wartezeit
     });
   }
   return _maxClient;
