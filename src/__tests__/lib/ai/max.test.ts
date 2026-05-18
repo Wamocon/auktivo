@@ -46,24 +46,24 @@ describe("getMaxClient Singleton", () => {
   });
 });
 
-describe("MAX_MODEL", () => {
+describe("MAX_MODEL_FAST / MAX_MODEL_DEEP", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.resetModules();
   });
 
-  it("verwendet Standard-Modell wenn MAX_MODEL nicht gesetzt", async () => {
-    vi.stubEnv("MAX_MODEL", "");
-    const { MAX_MODEL } = await import("@/lib/ai/max");
-    // Da MAX_MODEL beim Modul-Load ausgewertet wird, pruefen wir den Fallback
-    expect(typeof MAX_MODEL).toBe("string");
+  it("verwendet Standard-Modell wenn MAX_MODEL_FAST nicht gesetzt", async () => {
+    vi.stubEnv("MAX_MODEL_FAST", "");
+    const { MAX_MODEL_FAST } = await import("@/lib/ai/max");
+    // Fallback auf den eingebetteten Default-Wert
+    expect(typeof MAX_MODEL_FAST).toBe("string");
   });
 
   it("verwendet gesetztes MAX_MODEL aus Umgebungsvariable", async () => {
     vi.resetModules();
-    vi.stubEnv("MAX_MODEL", "my-custom-model");
-    const { MAX_MODEL } = await import("@/lib/ai/max");
-    expect(MAX_MODEL).toBe("my-custom-model");
+    vi.stubEnv("MAX_MODEL_FAST", "my-custom-model");
+    const { MAX_MODEL_FAST } = await import("@/lib/ai/max");
+    expect(MAX_MODEL_FAST).toBe("my-custom-model");
   });
 });
 
