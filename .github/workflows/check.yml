@@ -1,60 +1,408 @@
 name: Launch Checklist
- 
+
+# =============================================================================
+# Reusable workflow — checks every launch prerequisite for a project.
+#
+# Each input has two modes:
+#   • Provided  → Verify mode: confirms the value you gave is real & connected.
+#   • Empty     → Auto-discover mode: finds it automatically and reports it.
+#
+# SECRETS (set once at Organisation level):
+#   VERCEL_TOKEN          — Vercel personal access token
+#   VERCEL_ORG_ID         — Vercel team/org ID
+#   SUPABASE_ACCESS_TOKEN — Supabase personal access token
+#   SUPABASE_ORG_ID       — Supabase organisation ID (scope project search)
+#   ORG_PAT               — GitHub PAT with repo + pages scope
+# =============================================================================
+
 on:
-  release:
-    types: [published]
-  workflow_dispatch:
+  workflow_call:
     inputs:
       # ── Vercel ──────────────────────────────────────────────────────────────
       vercel_project_name:
-        description: "Vercel project name (leave empty to use this repo name)"
+        description: "Vercel project name. Defaults to calling repo name if empty."
         required: false
+        type: string
         default: ""
       vercel_custom_domain:
-        description: "Expected custom domain, e.g. myapp.com (leave empty to auto-discover)"
+        description: "Expected custom domain (e.g. myapp.com). Verifies it if provided; auto-discovers if empty."
         required: false
+        type: string
         default: ""
       # ── Supabase ────────────────────────────────────────────────────────────
       supabase_project_id:
-        description: "Supabase project ref/ID (leave empty to fuzzy-search by name)"
+        description: "Supabase project ref/ID. Verifies this exact project if provided; fuzzy-searches by name if empty."
         required: false
+        type: string
         default: ""
       supabase_project_name:
-        description: "Supabase project name hint for fuzzy search (leave empty to use repo name)"
+        description: "Supabase project name hint for fuzzy search (used when ID is not provided). Defaults to repo name."
         required: false
+        type: string
         default: ""
       # ── Landing Page ────────────────────────────────────────────────────────
       lp_repo_name:
-        description: "Landing page repo name (leave empty to use {repo-name}_lp)"
+        description: "Landing page GitHub repo name. Defaults to {repo-name}_lp if empty."
         required: false
+        type: string
         default: ""
-      # ── Handbook ────────────────────────────────────────────────────────────
+      # ── Product Handbook ────────────────────────────────────────────────────
       app_url:
-        description: "App base URL for handbook check (leave empty to auto-discover from Vercel)"
+        description: "App base URL for handbook path checks. Auto-discovered from Vercel if empty."
         required: false
+        type: string
         default: ""
       handbook_url:
-        description: "Direct handbook URL if hosted separately (leave empty to scan /user-manual, /manual, /handbook)"
+        description: "Direct URL to the handbook if hosted separately (skips path-scanning)."
         required: false
+        type: string
         default: ""
- 
+    secrets:
+      VERCEL_TOKEN:
+        required: true
+      VERCEL_ORG_ID:
+        required: true
+      SUPABASE_ACCESS_TOKEN:
+        required: true
+      SUPABASE_ORG_ID:
+        required: true
+      ORG_PAT:
+        required: true
+
 jobs:
   checklist:
-    name: Run checklist
-    # IMPORTANT: Path to the central workflow. Format: OrgName/RepoName/.github/...@Branch
-    uses: Wamocon/github_workflow/.github/workflows/launch-checklist.yml@main
-    with:
-      vercel_project_name: ${{ github.event.inputs.vercel_project_name || '' }}
-      vercel_custom_domain: ${{ github.event.inputs.vercel_custom_domain || '' }}
-      supabase_project_id:  ${{ github.event.inputs.supabase_project_id  || '' }}
-      supabase_project_name: ${{ github.event.inputs.supabase_project_name || '' }}
-      lp_repo_name:          ${{ github.event.inputs.lp_repo_name          || '' }}
-      app_url:               ${{ github.event.inputs.app_url               || '' }}
-      handbook_url:          ${{ github.event.inputs.handbook_url          || '' }}
-    secrets:
-      # These secrets must be set once at the Organisation level (Wamocon).
-      VERCEL_TOKEN:          ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID:         ${{ secrets.VERCEL_ORG_ID }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_ORG_ID:       ${{ secrets.SUPABASE_ORG_ID }}
-      ORG_PAT:               ${{ secrets.ORG_PAT }}
+    name: 🚀 Launch Checklist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      CI: "1"
+
+    steps:
+      # ── Setup: resolve names & open summary table ──────────────────────────
+      - name: Setup
+        id: setup
+        run: |
+          REPO_NAME="${{ github.event.repository.name }}"
+          REPO_OWNER="${{ github.event.repository.owner.login }}"
+
+          VERCEL_PROJECT="${{ inputs.vercel_project_name }}"
+          [[ -z "$VERCEL_PROJECT" ]] && VERCEL_PROJECT="$REPO_NAME"
+
+          LP_REPO="${{ inputs.lp_repo_name }}"
+          [[ -z "$LP_REPO" ]] && LP_REPO="${REPO_NAME}_lp"
+
+          # Pre-declare all shared env vars (keeps later steps safe if a step errors)
+          {
+            echo "REPO_NAME=$REPO_NAME"
+            echo "REPO_OWNER=$REPO_OWNER"
+            echo "VERCEL_PROJECT=$VERCEL_PROJECT"
+            echo "LP_REPO=$LP_REPO"
+            echo "VERCEL_PROJECT_ID="
+            echo "VERCEL_APP_URL="
+            echo "CUSTOM_DOMAIN="
+          } >> "$GITHUB_ENV"
+
+          # Temp file for extra details rendered after the table
+          echo "" > /tmp/checklist-details.md
+
+          # All table rows collected here; footer writes the complete table at once
+          echo "" > /tmp/checklist-table.md
+
+      # ── 1. Vercel: project exists + production + preview deployments ────────
+      - name: Vercel — project & deployments
+        if: always()
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          # Build team query param (empty string when no org ID)
+          TEAM=""
+          [[ -n "$VERCEL_ORG_ID" ]] && TEAM="teamId=$VERCEL_ORG_ID"
+
+          PROJECT_RESP=$(curl -sf \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT${TEAM:+?$TEAM}" \
+            2>/dev/null || echo '{}')
+
+          PROJECT_ID=$(echo "$PROJECT_RESP" | jq -r '.id // empty')
+
+          if [[ -z "$PROJECT_ID" ]]; then
+            echo "| Vercel — project exists | ❌ | Project \`$VERCEL_PROJECT\` not found |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+          echo "| Vercel — project exists | ✅ | \`$PROJECT_ID\` |" >> /tmp/checklist-table.md
+
+          # ── Production deployment ──────────────────────────────────────────
+          PROD_RESP=$(curl -sf \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&target=production&limit=5${TEAM:+&$TEAM}" \
+            2>/dev/null || echo '{"deployments":[]}')
+
+          PROD_URL=$(echo "$PROD_RESP" | jq -r '[.deployments[] | select(.state == "READY")] | first | .url // empty')
+
+          if [[ -n "$PROD_URL" ]]; then
+            echo "VERCEL_APP_URL=https://$PROD_URL" >> "$GITHUB_ENV"
+            echo "| Vercel — production deployment | ✅ | https://$PROD_URL |" >> /tmp/checklist-table.md
+          else
+            echo "| Vercel — production deployment | ❌ | No READY production deployment found |" >> /tmp/checklist-table.md
+          fi
+
+          # ── Preview deployment ─────────────────────────────────────────────
+          PREVIEW_RESP=$(curl -sf \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&target=preview&limit=5${TEAM:+&$TEAM}" \
+            2>/dev/null || echo '{"deployments":[]}')
+
+          PREVIEW_URL=$(echo "$PREVIEW_RESP" | jq -r '[.deployments[] | select(.state == "READY")] | first | .url // empty')
+
+          if [[ -n "$PREVIEW_URL" ]]; then
+            echo "| Vercel — preview deployment | ✅ | https://$PREVIEW_URL |" >> /tmp/checklist-table.md
+          else
+            echo "| Vercel — preview deployment | ❌ | No READY preview deployment found |" >> /tmp/checklist-table.md
+          fi
+
+      # ── 2. Vercel: custom domain ───────────────────────────────────────────
+      - name: Vercel — custom domain
+        if: always()
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        run: |
+          if [[ -z "$VERCEL_PROJECT_ID" ]]; then
+            echo "| Vercel — custom domain | ⚠️ | Skipped (project not found) |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          TEAM=""
+          [[ -n "$VERCEL_ORG_ID" ]] && TEAM="teamId=$VERCEL_ORG_ID"
+
+          DOMAINS_RESP=$(curl -sf \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT/domains${TEAM:+?$TEAM}" \
+            2>/dev/null || echo '{"domains":[]}')
+
+          EXPECTED="${{ inputs.vercel_custom_domain }}"
+
+          if [[ -n "$EXPECTED" ]]; then
+            # ── Verify mode: check if the exact domain is on this project ───
+            FOUND=$(echo "$DOMAINS_RESP" | jq -r --arg d "$EXPECTED" \
+              '.domains[] | select(.name == $d) | .name' | head -1)
+            if [[ -n "$FOUND" ]]; then
+              echo "CUSTOM_DOMAIN=$EXPECTED" >> "$GITHUB_ENV"
+              echo "| Vercel — custom domain | ✅ | \`$EXPECTED\` is configured |" >> /tmp/checklist-table.md
+            else
+              echo "| Vercel — custom domain | ❌ | \`$EXPECTED\` NOT found on project \`$VERCEL_PROJECT\` |" >> /tmp/checklist-table.md
+            fi
+          else
+            # ── Auto-discover: first non-vercel.app / non-now.sh domain ─────
+            CUSTOM=$(echo "$DOMAINS_RESP" | jq -r \
+              '.domains[] | select((.name | endswith(".vercel.app") | not) and (.name | endswith(".now.sh") | not)) | .name' \
+              | head -1)
+            if [[ -n "$CUSTOM" ]]; then
+              echo "CUSTOM_DOMAIN=$CUSTOM" >> "$GITHUB_ENV"
+              echo "| Vercel — custom domain | ✅ | \`$CUSTOM\` |" >> /tmp/checklist-table.md
+            else
+              echo "| Vercel — custom domain | ❌ | No custom domain configured |" >> /tmp/checklist-table.md
+            fi
+          fi
+
+      # ── 3. Supabase: project in org ────────────────────────────────────────
+      - name: Supabase — project
+        if: always()
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ORG_ID: ${{ secrets.SUPABASE_ORG_ID }}
+        run: |
+          ALL_PROJECTS=$(curl -sf \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects" \
+            2>/dev/null || echo "null")
+
+          if [[ "$ALL_PROJECTS" == "null" ]] || [[ -z "$ALL_PROJECTS" ]]; then
+            echo "| Supabase — project | ⚠️ | Could not reach Supabase API |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          # Filter to the configured org only
+          ORG_PROJECTS=$(echo "$ALL_PROJECTS" | jq --arg org "$SUPABASE_ORG_ID" \
+            '[.[] | select(.organization_id == $org)]')
+          ORG_COUNT=$(echo "$ORG_PROJECTS" | jq 'length')
+
+          GIVEN_ID="${{ inputs.supabase_project_id }}"
+          NAME_HINT="${{ inputs.supabase_project_name }}"
+          [[ -z "$NAME_HINT" ]] && NAME_HINT="$REPO_NAME"
+
+          # Helper: write project list to the details file (rendered after the table)
+          write_project_list() {
+            {
+              echo "### Supabase projects in org ($ORG_COUNT total)"
+              echo ""
+              echo "| Name | Project ID |"
+              echo "|:---|:---|"
+              echo "$ORG_PROJECTS" | jq -r '.[] | "| " + .name + " | `" + .id + "` |"'
+            } >> /tmp/checklist-details.md
+          }
+
+          if [[ -n "$GIVEN_ID" ]]; then
+            # ── Verify mode: check exact project ID exists in this org ───────
+            MATCH_NAME=$(echo "$ORG_PROJECTS" | jq -r \
+              --arg id "$GIVEN_ID" '.[] | select(.id == $id) | .name')
+            if [[ -n "$MATCH_NAME" ]]; then
+              echo "| Supabase — project | ✅ | \`$MATCH_NAME\` · \`$GIVEN_ID\` |" >> /tmp/checklist-table.md
+            else
+              echo "| Supabase — project | ❌ | ID \`$GIVEN_ID\` not found in org ($ORG_COUNT projects — see details below) |" >> /tmp/checklist-table.md
+              write_project_list
+            fi
+          else
+            # -- Auto-discover: pure jq fuzzy match -- no bash process substitution.
+            # `. as $n` captures the lowercased name before piping $hint as input,
+            # so `$hint | contains($n)` works correctly (context stays on $hint).
+            HINT_LOWER=$(echo "$NAME_HINT" | tr '[:upper:]' '[:lower:]')
+            MATCH=$(echo "$ORG_PROJECTS" | jq -r \
+              --arg hint "$HINT_LOWER" \
+              '.[] | select(
+                (.name | ascii_downcase | contains($hint)) or
+                (.name | ascii_downcase | . as $n | $hint | contains($n))
+              ) | .name + "|" + .id' | head -1)
+
+            if [[ -n "$MATCH" ]]; then
+              MATCH_NAME=$(echo "$MATCH" | cut -d'|' -f1)
+              MATCH_ID=$(echo "$MATCH" | cut -d'|' -f2)
+              echo "| Supabase — project | ✅ | \`$MATCH_NAME\` · \`$MATCH_ID\` |" >> /tmp/checklist-table.md
+            else
+              echo "| Supabase — project | ❌ | No match for \`$NAME_HINT\` in org ($ORG_COUNT projects — see details below) |" >> /tmp/checklist-table.md
+              write_project_list
+            fi
+          fi
+
+      # ── 4. Landing page: repo exists + GitHub Pages live ──────────────────
+      - name: Landing page — repo & GitHub Pages
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PAT }}
+        run: |
+          REPO_JSON=$(gh api "repos/$REPO_OWNER/$LP_REPO" 2>/dev/null || echo "")
+
+          if [[ -z "$REPO_JSON" ]]; then
+            echo "| Landing page — repo | ❌ | \`$REPO_OWNER/$LP_REPO\` not found |" >> /tmp/checklist-table.md
+            echo "| Landing page — GitHub Pages | ⚠️ | Skipped (repo not found) |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          REPO_URL=$(echo "$REPO_JSON" | jq -r '.html_url // empty')
+          echo "| Landing page — repo | ✅ | [$REPO_OWNER/$LP_REPO]($REPO_URL) |" >> /tmp/checklist-table.md
+
+          PAGES_JSON=$(gh api "repos/$REPO_OWNER/$LP_REPO/pages" 2>/dev/null || echo "")
+          if [[ -z "$PAGES_JSON" ]]; then
+            echo "| Landing page — GitHub Pages | ❌ | Pages not enabled on \`$LP_REPO\` |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          PAGES_URL=$(echo "$PAGES_JSON" | jq -r '.html_url // empty')
+          PAGES_STATUS=$(echo "$PAGES_JSON" | jq -r '.status // empty')
+
+          if [[ "$PAGES_STATUS" == "built" ]]; then
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PAGES_URL" 2>/dev/null || echo "000")
+            if [[ "$HTTP_CODE" =~ ^(200|301|302)$ ]]; then
+              echo "| Landing page — GitHub Pages | ✅ | [$PAGES_URL]($PAGES_URL) (HTTP $HTTP_CODE) |" >> /tmp/checklist-table.md
+            else
+              echo "| Landing page — GitHub Pages | ⚠️ | $PAGES_URL → HTTP $HTTP_CODE |" >> /tmp/checklist-table.md
+            fi
+          else
+            echo "| Landing page — GitHub Pages | ⚠️ | Pages status: \`$PAGES_STATUS\` |" >> /tmp/checklist-table.md
+          fi
+
+      # ── 5. Product handbook: scan all known locations ─────────────────────
+      - name: Product handbook
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PAT }}
+        run: |
+          HANDBOOK_PATHS=("user-manual" "manual" "handbook")
+          FOUND_URL=""
+
+          # Returns HTTP code for a given URL (000 on network error)
+          check_url() {
+            curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$1" 2>/dev/null || echo "000"
+          }
+
+          # ── Priority 0: direct URL provided by caller ──────────────────────
+          GIVEN_HANDBOOK="${{ inputs.handbook_url }}"
+          if [[ -n "$GIVEN_HANDBOOK" ]]; then
+            CODE=$(check_url "$GIVEN_HANDBOOK")
+            if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+              FOUND_URL="$GIVEN_HANDBOOK (HTTP $CODE)"
+            else
+              echo "| Product handbook | ❌ | Provided URL \`$GIVEN_HANDBOOK\` → HTTP $CODE |" >> /tmp/checklist-table.md
+              exit 0
+            fi
+          fi
+
+          # ── Priority 1: scan app URL (custom domain > Vercel prod URL) ─────
+          if [[ -z "$FOUND_URL" ]]; then
+            APP_URL="${{ inputs.app_url }}"
+            [[ -z "$APP_URL" && -n "$CUSTOM_DOMAIN" ]] && APP_URL="https://$CUSTOM_DOMAIN"
+            [[ -z "$APP_URL" ]] && APP_URL="$VERCEL_APP_URL"
+
+            if [[ -n "$APP_URL" ]]; then
+              for SUFFIX in "${HANDBOOK_PATHS[@]}"; do
+                CODE=$(check_url "$APP_URL/$SUFFIX")
+                if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+                  FOUND_URL="$APP_URL/$SUFFIX (HTTP $CODE)"
+                  break
+                fi
+              done
+            fi
+          fi
+
+          # ── Priority 2: GitHub Pages of the current repo ───────────────────
+          if [[ -z "$FOUND_URL" ]]; then
+            PAGES_JSON=$(gh api "repos/$REPO_OWNER/$REPO_NAME/pages" 2>/dev/null || echo "")
+            if [[ -n "$PAGES_JSON" ]]; then
+              PAGES_BASE=$(echo "$PAGES_JSON" | jq -r '.html_url // empty' | sed 's|/$||')
+              if [[ -n "$PAGES_BASE" ]]; then
+                for SUFFIX in "${HANDBOOK_PATHS[@]}"; do
+                  CODE=$(check_url "$PAGES_BASE/$SUFFIX")
+                  if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+                    FOUND_URL="$PAGES_BASE/$SUFFIX (HTTP $CODE)"
+                    break
+                  fi
+                done
+              fi
+            fi
+          fi
+
+          if [[ -n "$FOUND_URL" ]]; then
+            echo "| Product handbook | ✅ | $FOUND_URL |" >> /tmp/checklist-table.md
+          else
+            echo "| Product handbook | ❌ | Not found at /user-manual, /manual, /handbook (app URL + GitHub Pages checked) |" >> /tmp/checklist-table.md
+          fi
+
+      # ── Footer ─────────────────────────────────────────────────────────────
+      - name: Summary footer
+        if: always()
+        run: |
+          # Write the entire table in one block — no step-boundary blank lines
+          {
+            echo "## 🚀 Launch Checklist — \`$REPO_NAME\`"
+            echo ""
+            echo "| Check | Status | Detail |"
+            echo "|:---|:---:|:---|"
+            cat /tmp/checklist-table.md
+            echo ""
+            echo "---"
+            echo "_Checked: $(date -u '+%Y-%m-%d %H:%M UTC') · Trigger: \`${{ github.event_name }}\` · Run: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Append any extra details collected during checks (e.g. Supabase project list)
+          if [[ -s /tmp/checklist-details.md ]]; then
+            {
+              echo ""
+              echo "---"
+              cat /tmp/checklist-details.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
