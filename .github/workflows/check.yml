@@ -57,6 +57,12 @@ on:
         required: false
         type: string
         default: ""
+      # ── Release ─────────────────────────────────────────────────────────────
+      release_version:
+        description: "Release tag to create (e.g. v1.2.0). Auto-generated as vYYYY.MM.DD if empty."
+        required: false
+        type: string
+        default: ""
     secrets:
       VERCEL_TOKEN:
         required: true
@@ -101,13 +107,16 @@ jobs:
             echo "VERCEL_PROJECT_ID="
             echo "VERCEL_APP_URL="
             echo "CUSTOM_DOMAIN="
+            echo "LP_PAGES_URL="
+            echo "HANDBOOK_URL="
           } >> "$GITHUB_ENV"
 
           # Temp file for extra details rendered after the table
-          echo "" > /tmp/checklist-details.md
+          : > /tmp/checklist-details.md
 
-          # All table rows collected here; footer writes the complete table at once
-          echo "" > /tmp/checklist-table.md
+          # All table rows collected here; footer writes the complete table at once.
+          # Important: do not start with a blank line, or GitHub breaks table parsing.
+          : > /tmp/checklist-table.md
 
       # ── 1. Vercel: project exists + production + preview deployments ────────
       - name: Vercel — project & deployments
@@ -145,7 +154,7 @@ jobs:
 
           if [[ -n "$PROD_URL" ]]; then
             echo "VERCEL_APP_URL=https://$PROD_URL" >> "$GITHUB_ENV"
-            echo "| Vercel — production deployment | ✅ | https://$PROD_URL |" >> /tmp/checklist-table.md
+            echo "| Vercel — production deployment | ✅ | [open deployment](https://$PROD_URL) |" >> /tmp/checklist-table.md
           else
             echo "| Vercel — production deployment | ❌ | No READY production deployment found |" >> /tmp/checklist-table.md
           fi
@@ -159,7 +168,7 @@ jobs:
           PREVIEW_URL=$(echo "$PREVIEW_RESP" | jq -r '[.deployments[] | select(.state == "READY")] | first | .url // empty')
 
           if [[ -n "$PREVIEW_URL" ]]; then
-            echo "| Vercel — preview deployment | ✅ | https://$PREVIEW_URL |" >> /tmp/checklist-table.md
+            echo "| Vercel — preview deployment | ✅ | [open deployment](https://$PREVIEW_URL) |" >> /tmp/checklist-table.md
           else
             echo "| Vercel — preview deployment | ❌ | No READY preview deployment found |" >> /tmp/checklist-table.md
           fi
@@ -308,6 +317,7 @@ jobs:
           if [[ "$PAGES_STATUS" == "built" ]]; then
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$PAGES_URL" 2>/dev/null || echo "000")
             if [[ "$HTTP_CODE" =~ ^(200|301|302)$ ]]; then
+              echo "LP_PAGES_URL=$PAGES_URL" >> "$GITHUB_ENV"
               echo "| Landing page — GitHub Pages | ✅ | [$PAGES_URL]($PAGES_URL) (HTTP $HTTP_CODE) |" >> /tmp/checklist-table.md
             else
               echo "| Landing page — GitHub Pages | ⚠️ | $PAGES_URL → HTTP $HTTP_CODE |" >> /tmp/checklist-table.md
@@ -316,7 +326,7 @@ jobs:
             echo "| Landing page — GitHub Pages | ⚠️ | Pages status: \`$PAGES_STATUS\` |" >> /tmp/checklist-table.md
           fi
 
-      # ── 5. Product handbook: scan all known locations ─────────────────────
+      # ── 5. Product handbook: scan → auto-deploy docs/ → GitHub Pages ────────
       - name: Product handbook
         if: always()
         env:
@@ -335,7 +345,7 @@ jobs:
           if [[ -n "$GIVEN_HANDBOOK" ]]; then
             CODE=$(check_url "$GIVEN_HANDBOOK")
             if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
-              FOUND_URL="$GIVEN_HANDBOOK (HTTP $CODE)"
+              FOUND_URL="$GIVEN_HANDBOOK"
             else
               echo "| Product handbook | ❌ | Provided URL \`$GIVEN_HANDBOOK\` → HTTP $CODE |" >> /tmp/checklist-table.md
               exit 0
@@ -352,7 +362,7 @@ jobs:
               for SUFFIX in "${HANDBOOK_PATHS[@]}"; do
                 CODE=$(check_url "$APP_URL/$SUFFIX")
                 if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
-                  FOUND_URL="$APP_URL/$SUFFIX (HTTP $CODE)"
+                  FOUND_URL="$APP_URL/$SUFFIX"
                   break
                 fi
               done
@@ -368,7 +378,7 @@ jobs:
                 for SUFFIX in "${HANDBOOK_PATHS[@]}"; do
                   CODE=$(check_url "$PAGES_BASE/$SUFFIX")
                   if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
-                    FOUND_URL="$PAGES_BASE/$SUFFIX (HTTP $CODE)"
+                    FOUND_URL="$PAGES_BASE/$SUFFIX"
                     break
                   fi
                 done
@@ -376,10 +386,165 @@ jobs:
             fi
           fi
 
-          if [[ -n "$FOUND_URL" ]]; then
-            echo "| Product handbook | ✅ | $FOUND_URL |" >> /tmp/checklist-table.md
+          # ── Priority 3: auto-deploy docs/ folder to GitHub Pages ──────────
+          if [[ -z "$FOUND_URL" ]]; then
+            # Check if docs/ exists and has commits in this repo
+            DOCS_TYPE=$(gh api "repos/$REPO_OWNER/$REPO_NAME/contents/docs" \
+              --jq 'if type=="array" then "dir" else .type end' 2>/dev/null || echo "")
+
+            if [[ "$DOCS_TYPE" == "dir" ]]; then
+              DOCS_COMMIT=$(gh api "repos/$REPO_OWNER/$REPO_NAME/commits?path=docs&per_page=1" \
+                --jq '.[0].commit.committer.date // empty' 2>/dev/null || echo "")
+
+              if [[ -n "$DOCS_COMMIT" ]]; then
+                # Enable Pages using docs/ on the default branch
+                gh api "repos/$REPO_OWNER/$REPO_NAME/pages" \
+                  --method POST \
+                  -H "Accept: application/vnd.github+json" \
+                  -f "source[branch]=main" \
+                  -f "source[path]=/docs" \
+                  2>/dev/null || \
+                gh api "repos/$REPO_OWNER/$REPO_NAME/pages" \
+                  --method PUT \
+                  -H "Accept: application/vnd.github+json" \
+                  -f "source[branch]=main" \
+                  -f "source[path]=/docs" \
+                  2>/dev/null || true
+
+                # Read the resulting Pages URL
+                PAGES_BASE=$(gh api "repos/$REPO_OWNER/$REPO_NAME/pages" \
+                  --jq '.html_url // empty' 2>/dev/null | sed 's|/$||')
+
+                if [[ -n "$PAGES_BASE" ]]; then
+                  # Try handbook sub-paths (Pages deploy may still be building)
+                  for SUFFIX in "${HANDBOOK_PATHS[@]}"; do
+                    CODE=$(check_url "$PAGES_BASE/$SUFFIX")
+                    if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+                      FOUND_URL="$PAGES_BASE/$SUFFIX"
+                      break
+                    fi
+                  done
+                  # Fall back to /manual path even if still building
+                  if [[ -z "$FOUND_URL" ]]; then
+                    DEPLOY_NOTE=" (docs/ deployed — Pages build in progress)"
+                    FOUND_URL="$PAGES_BASE/manual${DEPLOY_NOTE}"
+                    echo "HANDBOOK_URL=$PAGES_BASE/manual" >> "$GITHUB_ENV"
+                    echo "| Product handbook | ⚠️ | docs/ deployed to GitHub Pages — [\`$PAGES_BASE/manual\`]($PAGES_BASE/manual) building now |" >> /tmp/checklist-table.md
+                    exit 0
+                  fi
+                fi
+              else
+                echo "| Product handbook | ❌ | No handbook found and docs/ folder has no commits |" >> /tmp/checklist-table.md
+                exit 0
+              fi
+            fi
+          fi
+
+          if [[ -n "$FOUND_URL" ]] && [[ "$FOUND_URL" != *"deploying"* ]]; then
+            # Strip any trailing deploy note before saving clean URL
+            CLEAN_URL=$(echo "$FOUND_URL" | sed 's/ (HTTP [0-9]*//' | sed 's/)$//' | xargs)
+            echo "HANDBOOK_URL=$CLEAN_URL" >> "$GITHUB_ENV"
+            echo "| Product handbook | ✅ | [$CLEAN_URL]($CLEAN_URL) |" >> /tmp/checklist-table.md
+          elif [[ -z "$FOUND_URL" ]]; then
+            echo "| Product handbook | ❌ | Not found — add a docs/ folder with index.html and manual/index.html |" >> /tmp/checklist-table.md
+          fi
+
+      # ── 6. Update repo About: homepage + multi-link description ─────────────
+      - name: Update repo — About section
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PAT }}
+        run: |
+          # Resolve the primary app URL (custom domain takes priority)
+          APP_URL=""
+          [[ -n "$CUSTOM_DOMAIN" ]] && APP_URL="https://$CUSTOM_DOMAIN"
+          [[ -z "$APP_URL" ]] && APP_URL="$VERCEL_APP_URL"
+
+          LP_URL="${LP_PAGES_URL}"
+          HB_URL="${HANDBOOK_URL}"
+
+          # Build description (max 350 chars, plain text)
+          APP_LABEL="${APP_URL:-no link}"
+          LP_LABEL="${LP_URL:-no link}"
+          HB_LABEL="${HB_URL:-no link}"
+          DESC="App: $APP_LABEL | Landing page: $LP_LABEL | Handbook: $HB_LABEL"
+          # Truncate safely
+          DESC="${DESC:0:350}"
+
+          # Best homepage URL: app > LP > handbook
+          HOMEPAGE="$APP_URL"
+          [[ -z "$HOMEPAGE" ]] && HOMEPAGE="$LP_URL"
+          [[ -z "$HOMEPAGE" ]] && HOMEPAGE="$HB_URL"
+
+          # Patch the repo using GitHub API
+          if [[ -n "$HOMEPAGE" ]]; then
+            gh api "repos/$REPO_OWNER/$REPO_NAME" \
+              --method PATCH \
+              -f description="$DESC" \
+              -f homepage="$HOMEPAGE" \
+              --silent 2>/dev/null || true
           else
-            echo "| Product handbook | ❌ | Not found at /user-manual, /manual, /handbook (app URL + GitHub Pages checked) |" >> /tmp/checklist-table.md
+            gh api "repos/$REPO_OWNER/$REPO_NAME" \
+              --method PATCH \
+              -f description="$DESC" \
+              --silent 2>/dev/null || true
+          fi
+
+          echo "| Repo About | ✅ | Homepage: \`${HOMEPAGE:-none}\` · Description updated |" >> /tmp/checklist-table.md
+
+      # ── 7. Create GitHub Release ───────────────────────────────────────────
+      - name: GitHub Release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PAT }}
+        run: |
+          # If triggered by a release event, skip — release already exists
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "| GitHub Release | ✅ | Triggered by release \`${{ github.ref_name }}\` |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          # Determine tag
+          RELEASE_TAG="${{ inputs.release_version }}"
+          [[ -z "$RELEASE_TAG" ]] && RELEASE_TAG="v$(date -u '+%Y.%m.%d')"
+
+          # Build release notes into a temp file (avoids multi-line string YAML indent issues)
+          APP_URL=""
+          [[ -n "$CUSTOM_DOMAIN" ]] && APP_URL="https://$CUSTOM_DOMAIN"
+          [[ -z "$APP_URL" ]] && APP_URL="${VERCEL_APP_URL:-N/A}"
+
+          {
+            echo "## 🚀 Launch — $(date -u '+%Y-%m-%d')"
+            echo ""
+            echo "**App:** ${APP_URL}"
+            echo "**Landing page:** ${LP_PAGES_URL:-N/A}"
+            echo "**Handbook:** ${HANDBOOK_URL:-N/A}"
+            echo ""
+            echo "> Generated automatically by the Launch Checklist workflow."
+            echo "> Run: [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          } > /tmp/release-notes.md
+
+          # Check if the tag already exists
+          EXISTING_URL=$(gh release view "$RELEASE_TAG" \
+            --repo "$REPO_OWNER/$REPO_NAME" \
+            --json url --jq ".url" 2>/dev/null || echo "")
+
+          if [[ -n "$EXISTING_URL" ]]; then
+            echo "| GitHub Release | ✅ | [\`$RELEASE_TAG\`]($EXISTING_URL) already exists |" >> /tmp/checklist-table.md
+            exit 0
+          fi
+
+          # Create the release
+          RELEASE_URL=$(gh release create "$RELEASE_TAG" \
+            --repo "$REPO_OWNER/$REPO_NAME" \
+            --title "🚀 Release $RELEASE_TAG" \
+            --notes-file /tmp/release-notes.md \
+            --latest 2>/dev/null || echo "")
+
+          if [[ -n "$RELEASE_URL" ]]; then
+            echo "| GitHub Release | ✅ | [\`$RELEASE_TAG\`]($RELEASE_URL) created |" >> /tmp/checklist-table.md
+          else
+            echo "| GitHub Release | ⚠️ | Could not create \`$RELEASE_TAG\` (tag may conflict or PAT lacks write:packages) |" >> /tmp/checklist-table.md
           fi
 
       # ── Footer ─────────────────────────────────────────────────────────────
